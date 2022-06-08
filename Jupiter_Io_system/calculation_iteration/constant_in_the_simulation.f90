@@ -20,6 +20,8 @@ module constant_in_the_simulation
     double precision, parameter :: planet_radius = 7.1492d7     ![m]
     double precision, parameter :: planet_rotation = 2d0 * pi / 9.9258d0 / 3600d0   ![rad s-1]
     double precision, parameter :: planet_l_shell = 5.84760d0
+    double precision, parameter :: planet_mlat_1 = - acos(sqrt((1d0 + 25d5 / planet_radius) / planet_l_shell))  ![rad]
+    double precision, parameter :: planet_mlat_2 = - planet_mlat_1  ![rad]
 
     
     !--------------------------------------------------------------------------------------------

@@ -44,6 +44,6 @@ module boundary_and_initial_conditions
     ! result file
     !------------
 
-    character(len=128) :: result_file = '../results/result_number_density_1.csv'
+    character(len = 128) :: result_file = '../results/result_number_density_1.csv'
 
 end module boundary_and_initial_conditions    

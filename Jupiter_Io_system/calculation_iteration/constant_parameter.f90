@@ -13,4 +13,7 @@ module constant_parameter
     double precision, parameter :: constant_of_gravitation = 6.67430d-11    ![kg-1 m3 s-2]
     double precision, parameter :: electron_mass = 9.1093837015d-31     ![kg]
 
+    double precision, parameter :: rad2deg = 180d0 / pi
+    double precision, parameter :: deg2rad = pi / 180d0
+
 end module constant_parameter
