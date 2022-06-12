@@ -66,6 +66,8 @@ program main
         end if
     end do  !count_i
 
+    electrostatic_potential = initial_electrostatic_potential
+
 
     !--------------------
     ! boundary conditions
@@ -91,12 +93,47 @@ program main
     call make_adiabatic_invariant(particle_mass, magnetic_flux_density, injection_grid_number, adiabatic_invariant)
 
 
+    !----------------
+    ! iteration start
+    !----------------
+
+    count_iteration = 0
+
+    do  !count_iteration
+        count_iteration = count_iteration + 1
+
+        !-----------
+        ! make _diff
+        !-----------
+
+        call make_electrostatic_potential_diff(electrostatic_potential, electrostatic_potential_diff)
+
+        call make_boundary_number_density_diff(boundary_number_density, boundary_number_density_diff)
+
+        call make_potential_energy_diff(mlat, length2planet, length2satellite, charge_number, particle_mass, &
+            & electrostatic_potential_diff, potential_energy_diff)
+
+        !-------
+        ! finish
+        !-------
+
+        if (count_iteration == 100) then
+            exit
+        end if 
+
+    end do !count_iteration
+
+
+
+
     !NaN check
-    do count_s = 1, boundary_series_number
-        do count_mu = 1, adiabatic_invariant_grid_number
-            if ( adiabatic_invariant(count_s, count_mu) /= adiabatic_invariant(count_s, count_mu) ) then
-                print *, "NaN", count_s, count_mu
-            end if
+    do count_h = 1, 3
+        do count_s = 1, boundary_series_number
+            do count_i = 1, real_grid_number
+                if ( potential_energy_diff(count_h, count_s, count_i) /= potential_energy_diff(count_h, count_s, count_i) ) then
+                    print *, "NaN", count_h, count_s, count_i
+                end if
+            end do
         end do
     end do
 

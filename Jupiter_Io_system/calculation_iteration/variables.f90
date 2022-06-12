@@ -36,11 +36,11 @@ module variables
     !-----------------------------
 
     double precision, dimension(boundary_series_number, adiabatic_invariant_grid_number) :: adiabatic_invariant
-    double precision, dimension(3, real_grid_number) :: electrostatic_potential
+    double precision, dimension(3, real_grid_number) :: electrostatic_potential_diff
     double precision, dimension(3, boundary_series_number) :: boundary_number_density_diff
-    double precision, dimension(3, boundary_series_number, real_grid_number) :: potential_energy
+    double precision, dimension(3, boundary_series_number, real_grid_number) :: potential_energy_diff
     double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, amax
-    double precision, dimension(3, boundary_series_number, real_grid_number) :: number_density
+    double precision, dimension(3, boundary_series_number, real_grid_number) :: number_density_diff
     double precision, dimension(3, real_grid_number) :: charge_density, charge_density_plus, charge_density_minus
     double precision, dimension(3, real_grid_number) :: charge_density_poisson
 
@@ -49,8 +49,7 @@ module variables
     ! for iteration
     !--------------
 
-    double precision, dimension(real_grid_number) :: new_electrostatic_potential
-    double precision, dimension(boundary_series_number) :: new_boundary_number_density
+    double precision, dimension(real_grid_number) :: electrostatic_potential
     double precision, dimension(3, real_grid_number) :: convergence_number
     double precision :: convergence_number_sum
     double precision :: convergence_number_sum_min
@@ -60,7 +59,7 @@ module variables
     ! counter
     !--------
 
-    integer :: count_h, count_s, count_i, count_mu
+    integer :: count_iteration, count_h, count_s, count_i, count_mu
 
 
     !------

@@ -31,3 +31,99 @@ subroutine make_adiabatic_invariant(particle_mass, magnetic_flux_density, inject
     end do  !count_s
     
 end subroutine make_adiabatic_invariant
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_electrostatic_potential_diff(electrostatic_potential,  electrostatic_potential_diff)
+    use constant_parameter
+    use constant_in_the_simulation
+
+    implicit none
+    
+    double precision, dimension(real_grid_number), intent(in) :: electrostatic_potential
+    double precision, dimension(3, real_grid_number), intent(out) ::  electrostatic_potential_diff
+
+    electrostatic_potential_diff(1, :) = electrostatic_potential
+    electrostatic_potential_diff(2, :) = electrostatic_potential + 1d-7
+    electrostatic_potential_diff(3, :) = electrostatic_potential - 1d-7
+        
+end subroutine make_electrostatic_potential_diff
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_boundary_number_density_diff(boundary_number_density,  boundary_number_density_diff)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(boundary_series_number), intent(in) :: boundary_number_density
+    double precision, dimension(3, boundary_series_number), intent(out) ::  boundary_number_density_diff
+
+    boundary_number_density_diff(1, :) = boundary_number_density
+
+    boundary_number_density_diff(2, boundary_ionosphere_1_variable_species) &
+        & = boundary_number_density(boundary_ionosphere_1_variable_species) * (1d0 + 1d-7)
+    boundary_number_density_diff(3, boundary_ionosphere_1_variable_species) &
+        & = boundary_number_density(boundary_ionosphere_1_variable_species) * (1d0 - 1d-7)
+    
+    boundary_number_density_diff(2, boundary_ionosphere_2_variable_species) &
+        & = boundary_number_density(boundary_ionosphere_2_variable_species) * (1d0 + 1d-7)
+    boundary_number_density_diff(3, boundary_ionosphere_2_variable_species) &
+        & = boundary_number_density(boundary_ionosphere_2_variable_species) * (1d0 - 1d-7)
+
+    boundary_number_density_diff(2, boundary_magnetosphere_variable_species) &
+        & = boundary_number_density(boundary_magnetosphere_variable_species) * (1d0 + 1d-7)
+    boundary_number_density_diff(3, boundary_magnetosphere_variable_species) &
+        & = boundary_number_density(boundary_magnetosphere_variable_species) * (1d0 - 1d-7)
+
+end subroutine make_boundary_number_density_diff
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_potential_energy_diff(mlat, length2planet, length2satellite, charge_number, particle_mass, &
+    & electrostatic_potential_diff, potential_energy_diff)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(real_grid_number), intent(in) :: mlat, length2planet, length2satellite
+    double precision, dimension(boundary_series_number), intent(in) :: charge_number, particle_mass
+    double precision, dimension(3, real_grid_number), intent(in) :: electrostatic_potential_diff
+    double precision, dimension(3, boundary_series_number, real_grid_number), intent(out) ::  potential_energy_diff
+
+    integer :: count_h, count_i
+
+    do count_h = 1, 3
+        
+        do count_i = 1, real_grid_number
+
+            !gravity of planet
+            potential_energy_diff(count_h, :, count_i) = - constant_of_gravitation * planet_mass * particle_mass &
+                & / length2planet(count_i)
+            
+            !centrifugal force of planet
+            potential_energy_diff(count_h, :, count_i) = potential_energy_diff(count_h, :, count_i) &
+                & - particle_mass * (planet_rotation * length2planet(count_i) * cos(mlat(count_i)))**2d0 / 2d0
+            
+            !gravity of satellite
+            if ( satellite_mass /= 0d0 ) then
+                potential_energy_diff(count_h, :, count_i) = potential_energy_diff(count_h, :, count_i) &
+                    & - constant_of_gravitation * satellite_mass * particle_mass / length2satellite(count_i)
+            end if
+
+            !Coulomb force
+            potential_energy_diff(count_h, :, count_i) = potential_energy_diff(count_h, :, count_i) &
+                & + charge_number * electrostatic_potential_diff(count_h, count_i)
+        
+        end do  !count_i
+    
+    end do  !count_h
+    
+end subroutine make_potential_energy_diff
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
