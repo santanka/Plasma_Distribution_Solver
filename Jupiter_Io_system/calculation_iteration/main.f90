@@ -12,6 +12,7 @@ program main
 
     !MLAT
     do count_i = 1, real_grid_number
+
         if ( count_i <= 41 ) then
             mlat(count_i) = planet_mlat_1 + (planet_mlat_2 - planet_mlat_1) * dble(count_i - 1) / dble(1600)
 
@@ -22,6 +23,7 @@ program main
             mlat(count_i) = planet_mlat_1 + (planet_mlat_2 - planet_mlat_1) * dble(count_i - 193 + 1560) / dble(1600)
 
         end if
+
     end do  !count_i
 
     !length2planet
@@ -52,6 +54,7 @@ program main
     !------------------
     
     do count_i = 1, real_grid_number
+
         if ( (count_i <= initial_grid_ionophere_middle_1 - 1) &
             & .or. (initial_grid_ionophere_middle_2 <= count_i .and. count_i <= real_grid_number) ) then
             initial_electrostatic_potential(count_i) = initial_electrostatic_potential_ionosphere
@@ -64,6 +67,7 @@ program main
             initial_electrostatic_potential(count_i) = initial_electrostatic_potential_magnetosphere
         
         end if
+
     end do  !count_i
 
     electrostatic_potential = initial_electrostatic_potential
@@ -76,8 +80,10 @@ program main
     open(30, file = boundary_file, action = 'read', status = 'old')
     read(30, *)
     do count_s = 1, boundary_series_number
+
         read(30, *) dummy, boundary_number_density(count_s), boundary_temperature_perp(count_s), &
             & boundary_temperature_para(count_s), charge_number(count_s), particle_mass(count_s), injection_grid_number(count_s)
+    
     end do  !count_s
     close(30)
 
@@ -102,6 +108,7 @@ program main
     do  !count_iteration
         count_iteration = count_iteration + 1
 
+
         !-----------
         ! make _diff
         !-----------
@@ -113,11 +120,18 @@ program main
         call make_potential_energy_diff(mlat, length2planet, length2satellite, charge_number, particle_mass, &
             & electrostatic_potential_diff, potential_energy_diff)
 
+        
+        !--------------
+        ! accessibility
+        !--------------
+        
+        call make_amin(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, amin)
+        
         !-------
         ! finish
         !-------
 
-        if (count_iteration == 100) then
+        if (count_iteration == 3) then
             exit
         end if 
 
@@ -130,9 +144,11 @@ program main
     do count_h = 1, 3
         do count_s = 1, boundary_series_number
             do count_i = 1, real_grid_number
-                if ( potential_energy_diff(count_h, count_s, count_i) /= potential_energy_diff(count_h, count_s, count_i) ) then
-                    print *, "NaN", count_h, count_s, count_i
-                end if
+                do count_mu = 1, adiabatic_invariant_grid_number
+                    if ( amin(count_h, count_s, count_i, count_mu) /= amin(count_h, count_s, count_i, count_mu) ) then
+                    print *, "NaN", count_h, count_s, count_i, count_mu
+                    end if
+                end do
             end do
         end do
     end do

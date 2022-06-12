@@ -127,3 +127,90 @@ end subroutine make_potential_energy_diff
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
+subroutine make_amin(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, amin)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(3, boundary_series_number, real_grid_number), intent(in) :: potential_energy_diff
+    double precision, dimension(boundary_series_number, adiabatic_invariant_grid_number), intent(in) :: adiabatic_invariant
+    double precision, dimension(real_grid_number), intent(in) ::  magnetic_flux_density
+    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number), intent(out) :: amin
+
+    integer :: count_h, count_s, count_i, count_mu, Emax_grid, count4max
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: total_energy
+
+    !total energy
+    do count_h = 1, 3
+
+        do count_s = 1, boundary_series_number
+
+            do count_i = 1, real_grid_number
+
+                total_energy(count_h, count_s, count_i, :) = potential_energy_diff(count_h, count_s, count_i) &
+                    & + magnetic_flux_density(count_i) * adiabatic_invariant(count_s, :)
+
+            end do  !count_i
+
+        end do  !count_s
+
+    end do  !count_h
+
+    !amin
+    do count_s = 1, boundary_series_number
+
+        do count_i = 1, real_grid_number
+
+            if ( count_i /= injection_grid_number(count_s) ) then
+                do count_h = 1, 3
+                    
+                    do count_mu = 1, adiabatic_invariant_grid_number
+                        
+                        if ( count_i < injection_grid_number(count_s) ) then
+                            Emax_grid = count_i + 1
+                            do count4max = count_i + 1, injection_grid_number(count_s)
+
+                                if ( total_energy(1, count_s, count4max, count_mu) &
+                                    & > total_energy(1, count_s, Emax_grid, count_mu) ) then
+                                    Emax_grid = count4max
+                                end if
+                            
+                            end do  !count4max
+                        
+                        else if ( count_i > injection_grid_number(count_s) ) then
+                            Emax_grid = injection_grid_number(count_s)
+                            do count4max = injection_grid_number(count_s), count_i - 1
+
+                                if ( total_energy(1, count_s, count4max, count_mu) &
+                                    & > total_energy(1, count_s, Emax_grid, count_mu) ) then
+                                Emax_grid = count4max
+                                end if
+                            
+                            end do  !count4max
+                        end if
+
+                        if ( total_energy(count_h, count_s, count_i, count_mu) > total_energy(1, count_s, Emax_grid, count_mu) )then
+                            amin(count_h, count_s, count_i, count_mu) = sqrt(total_energy(count_h, count_s, count_i, count_mu) &
+                                & - total_energy(1, count_s, injection_grid_number(count_s), count_mu))
+                        else
+                            amin(count_h, count_s, count_i, count_mu) = sqrt(total_energy(1, count_s, Emax_grid, count_mu) &
+                                & - total_energy(1, count_s, injection_grid_number(count_s), count_mu))
+                        end if
+
+                    end do  !count_mu
+
+                end do  !count_h
+
+            else if ( count_i == injection_grid_number(count_s) ) then
+                amin(:, count_s, count_i, :) = 0d0
+
+            end if
+        end do  !count_i
+        
+    end do  !count_s
+
+    
+end subroutine make_amin
