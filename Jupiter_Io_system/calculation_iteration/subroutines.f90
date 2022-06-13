@@ -62,6 +62,8 @@ subroutine make_boundary_number_density_diff(boundary_number_density,  boundary_
     double precision, dimension(3, boundary_series_number), intent(out) ::  boundary_number_density_diff
 
     boundary_number_density_diff(1, :) = boundary_number_density
+    boundary_number_density_diff(2, :) = boundary_number_density
+    boundary_number_density_diff(3, :) = boundary_number_density
 
     boundary_number_density_diff(2, boundary_ionosphere_1_variable_species) &
         & = boundary_number_density(boundary_ionosphere_1_variable_species) * (1d0 + 1d-7)
@@ -299,10 +301,10 @@ subroutine make_amax(potential_energy_diff, adiabatic_invariant, magnetic_flux_d
                             amax(count_h, count_s, count_i, count_mu) = 0d0
 
                         else if ( amin(count_h, count_s, count_i, count_mu)**2d0 < energy_difference(count_h) &
-                            & .and. energy_difference(count_h) < 5d-1 * particle_mass(count_s) *speed_of_light**2d0 ) then
+                            & .and. energy_difference(count_h) < 5d-1 * particle_mass(count_s) * speed_of_light**2d0 ) then
                             amax(count_h, count_s, count_i, count_mu) = sqrt(energy_difference(count_h))
 
-                        else if ( energy_difference(count_h) >= 5d-1 * particle_mass(count_s) *speed_of_light**2d0 ) then
+                        else if ( energy_difference(count_h) >= 5d-1 * particle_mass(count_s) * speed_of_light**2d0 ) then
                             amax(count_h, count_s, count_i, count_mu) = sqrt(particle_mass(count_s) / 2d0) * speed_of_light
                         end if
 
@@ -321,3 +323,113 @@ end subroutine make_amax
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
+subroutine make_number_density(boundary_number_density_diff, boundary_temperature_perp, boundary_temperature_para, &
+    & potential_energy_diff, magnetic_flux_density, adiabatic_invariant, injection_grid_number, particle_mass, amin, amax, &
+    & number_density_diff)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(3, boundary_series_number), intent(in) :: boundary_number_density_diff
+    double precision, dimension(boundary_series_number), intent(in) :: boundary_temperature_perp, boundary_temperature_para
+    double precision, dimension(3, boundary_series_number, real_grid_number), intent(in) :: potential_energy_diff
+    double precision, dimension(real_grid_number), intent(in) :: magnetic_flux_density
+    double precision, dimension(boundary_series_number, adiabatic_invariant_grid_number), intent(in) :: adiabatic_invariant
+    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
+    double precision, dimension(boundary_series_number), intent(in) :: particle_mass
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, amax
+    double precision, dimension(3, boundary_series_number, real_grid_number), intent(out) :: number_density_diff
+
+    integer :: count_h, count_s, count_i
+    double precision :: integral, num
+    double precision, dimension(adiabatic_invariant_grid_number) :: alpha_mu, amax_mu, amin_mu
+
+    do count_s = 1, boundary_series_number
+        
+        do count_i = 1, real_grid_number
+            
+            if ( count_i == injection_grid_number(count_s) ) then
+                alpha_mu = magnetic_flux_density(count_i) * adiabatic_invariant(count_s, :) / boundary_temperature_perp(count_s)
+                amax_mu = amax(1, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
+                amin_mu = 0d0
+
+                call calculation_integral_exp_erf(adiabatic_invariant(count_s, :), alpha_mu, amax_mu, amin_mu, integral)
+
+                num = 1d0 - exp(- particle_mass(count_s) * speed_of_light**2d0 / 2d0 / boundary_temperature_perp(count_s)) &
+                    & + magnetic_flux_density(count_i) / boundary_temperature_perp(count_s) * integral
+                
+                number_density_diff(:, count_s, count_i) = boundary_number_density_diff(:, count_s) / 2d0 * num
+                
+            else if ( count_i /= injection_grid_number(count_s) ) then
+                do count_h = 1, 3
+
+                    alpha_mu = (magnetic_flux_density(injection_grid_number(count_s)) / boundary_temperature_perp(count_s) &
+                        & + (magnetic_flux_density(count_i) - magnetic_flux_density(injection_grid_number(count_s))) &
+                        & / boundary_temperature_para(count_s)) * adiabatic_invariant(count_s, :)
+                    amax_mu = amax(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
+                    amin_mu = amin(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
+
+                    call calculation_integral_exp_erf(adiabatic_invariant(count_s, :), alpha_mu, amax_mu, amin_mu, integral)
+
+                    num = 1d0 - exp(- ((boundary_temperature_para(count_s) - boundary_temperature_perp(count_s)) &
+                        & * magnetic_flux_density(injection_grid_number(count_s)) + boundary_temperature_perp(count_s) &
+                        & * magnetic_flux_density(count_i)) / boundary_temperature_para(count_s) / magnetic_flux_density(count_i) &
+                        & * particle_mass(count_s) * speed_of_light**2d0 / 2d0 / boundary_temperature_perp(count_s))
+                    
+                    num = num + magnetic_flux_density(count_i) / boundary_temperature_perp(count_s) * integral
+
+                    num = boundary_number_density_diff(1, count_s) / 2d0 &
+                        & * exp(- (potential_energy_diff(count_h, count_s, count_i) - &
+                        & potential_energy_diff(1, count_s, injection_grid_number(count_s)))) * num
+
+                end do  !count_h
+                
+            end if
+
+        end do  !count_i
+
+    end do  !count_s
+    
+end subroutine make_number_density
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine calculation_integral_exp_erf(mu, alpha_mu, amax_mu, amin_mu, integral_result)
+    use constant_parameter
+    use constant_in_the_simulation
+
+    implicit none
+    
+    double precision, dimension(adiabatic_invariant_grid_number), intent(in) :: mu, alpha_mu, amax_mu, amin_mu
+    double precision, intent(out) :: integral_result
+
+    integer :: count_mu
+    double precision :: integral_former, integral_latter
+
+    integral_result = 0d0
+
+    do count_mu = 1, adiabatic_invariant_grid_number - 1
+
+        if ( amax_mu(count_mu) /= 0d0 ) then
+            integral_former = exp(- alpha_mu(count_mu)) * (erf(amax_mu(count_mu)) - 2d0 * erf(amin_mu(count_mu)))
+
+        else if ( amax_mu(count_mu) == 0d0 ) then
+            integral_former = exp(- alpha_mu(count_mu)) * (- erf(amin_mu(count_mu)))
+
+        end if
+
+        if ( amax_mu(count_mu + 1) /= 0d0 ) then
+            integral_former = exp(- alpha_mu(count_mu + 1)) * (erf(amax_mu(count_mu + 1)) - 2d0 * erf(amin_mu(count_mu + 1)))
+
+        else if ( amax_mu(count_mu + 1) == 0d0 ) then
+            integral_former = exp(- alpha_mu(count_mu + 1)) * (- erf(amin_mu(count_mu + 1)))
+
+        end if
+
+        integral_result = integral_result + (integral_former + integral_latter) / 2d0 * (mu(count_mu + 1) - mu(count_mu))
+
+    end do  !count_mu
+  
+end subroutine calculation_integral_exp_erf

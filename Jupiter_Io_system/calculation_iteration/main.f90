@@ -129,10 +129,31 @@ program main
 
         call make_amax(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, particle_mass, &
         & amin, amax)
+
+        !--------
+        ! density
+        !--------
+
+        call make_number_density(boundary_number_density_diff, boundary_temperature_perp, boundary_temperature_para, &
+            & potential_energy_diff, magnetic_flux_density, adiabatic_invariant, injection_grid_number, particle_mass, amin, &
+            & amax, number_density_diff)
         
         !-------
         ! finish
         !-------
+
+        !NaN check
+        do count_h = 1, 3
+            do count_s = 1, boundary_series_number
+                do count_i = 1, real_grid_number
+                    do count_mu = 1, adiabatic_invariant_grid_number
+                        if ( number_density_diff(count_h, count_s, count_i) /= number_density_diff(count_h, count_s, count_i) ) then
+                        print *, "NaN", count_h, count_s, count_i, count_mu
+                        end if
+                    end do
+                end do
+            end do
+        end do
 
         print *, count_iteration
 
@@ -141,22 +162,6 @@ program main
         end if 
 
     end do !count_iteration
-
-
-
-
-    !NaN check
-    do count_h = 1, 3
-        do count_s = 1, boundary_series_number
-            do count_i = 1, real_grid_number
-                do count_mu = 1, adiabatic_invariant_grid_number
-                    if ( amax(count_h, count_s, count_i, count_mu) /= amax(count_h, count_s, count_i, count_mu) ) then
-                    print *, "NaN", count_h, count_s, count_i, count_mu
-                    end if
-                end do
-            end do
-        end do
-    end do
 
 
 
