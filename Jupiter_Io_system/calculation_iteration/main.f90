@@ -2,7 +2,7 @@ program main
 
     use constant_parameter
     use constant_in_the_simulation
-    use variables
+    use main_variables
 
     implicit none
 

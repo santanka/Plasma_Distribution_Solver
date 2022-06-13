@@ -1,4 +1,4 @@
-module variables
+module main_variables
     use constant_in_the_simulation
     use boundary_and_initial_conditions
 
@@ -68,4 +68,4 @@ module variables
 
     character(len = 128) :: dummy
 
-end module variables
+end module main_variables
