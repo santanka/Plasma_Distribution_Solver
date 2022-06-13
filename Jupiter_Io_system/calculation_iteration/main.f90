@@ -126,10 +126,15 @@ program main
         !--------------
         
         call make_amin(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, amin)
+
+        call make_amax(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, particle_mass, &
+        & amin, amax)
         
         !-------
         ! finish
         !-------
+
+        print *, count_iteration
 
         if (count_iteration == 3) then
             exit
@@ -145,7 +150,7 @@ program main
         do count_s = 1, boundary_series_number
             do count_i = 1, real_grid_number
                 do count_mu = 1, adiabatic_invariant_grid_number
-                    if ( amin(count_h, count_s, count_i, count_mu) /= amin(count_h, count_s, count_i, count_mu) ) then
+                    if ( amax(count_h, count_s, count_i, count_mu) /= amax(count_h, count_s, count_i, count_mu) ) then
                     print *, "NaN", count_h, count_s, count_i, count_mu
                     end if
                 end do

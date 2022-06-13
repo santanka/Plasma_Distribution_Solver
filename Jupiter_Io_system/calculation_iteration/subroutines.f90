@@ -214,3 +214,110 @@ subroutine make_amin(potential_energy_diff, adiabatic_invariant, magnetic_flux_d
 
     
 end subroutine make_amin
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_amax(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, particle_mass, &
+    & amin, amax)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(3, boundary_series_number, real_grid_number), intent(in) :: potential_energy_diff
+    double precision, dimension(boundary_series_number, adiabatic_invariant_grid_number), intent(in) :: adiabatic_invariant
+    double precision, dimension(real_grid_number), intent(in) ::  magnetic_flux_density
+    double precision, dimension(boundary_series_number), intent(in) :: particle_mass
+    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number), intent(in) :: amin
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number), intent(out) :: amax
+
+    integer :: count_h, count_s, count_i, count_mu, Emax_grid, count4max
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: total_energy
+    double precision, dimension(3) :: energy_difference
+
+    !total energy
+    do count_h = 1, 3
+
+        do count_s = 1, boundary_series_number
+
+            do count_i = 1, real_grid_number
+
+                total_energy(count_h, count_s, count_i, :) = potential_energy_diff(count_h, count_s, count_i) &
+                    & + magnetic_flux_density(count_i) * adiabatic_invariant(count_s, :)
+
+            end do  !count_i
+
+        end do  !count_s
+
+    end do  !count_h
+
+    !amax
+    do count_s = 1, boundary_series_number
+
+        do count_i = 1, real_grid_number
+
+            if ( (count_i == 1 .and. injection_grid_number(count_s) /= 1) &
+                & .or. (count_i == real_grid_number .and. injection_grid_number(count_s) /= real_grid_number) ) then
+                amax(:, count_s, count_i, :) = 0d0
+
+            else if ( count_i == injection_grid_number(count_s) .and. injection_grid_number(count_s) /= 1 &
+                & .and. injection_grid_number(count_s) /= real_grid_number ) then
+                amax(:, count_s, count_i, :) = 1d100
+            
+            else
+                do count_mu = 1, adiabatic_invariant_grid_number
+
+                    if ( count_i < injection_grid_number(count_s) .or. injection_grid_number(count_s) == real_grid_number ) then
+                        Emax_grid = 1
+                        do count4max = 1, count_i
+
+                            if ( total_energy(1, count_s, count4max, count_mu) &
+                                & > total_energy(1, count_s, Emax_grid, count_mu) ) then
+                                Emax_grid = count4max
+                            end if
+
+                        end do  !count4max
+                    
+                    else if (count_i > injection_grid_number(count_s) .or. injection_grid_number(count_s) == 1) then
+                        Emax_grid = count_i + 1
+                        do count4max = count_i + 1, real_grid_number
+                            
+                            if ( total_energy(1, count_s, count4max, count_mu) &
+                            & > total_energy(1, count_s, Emax_grid, count_mu) ) then
+                                Emax_grid = count4max
+                            end if
+
+                        end do  !count4max
+                    end if
+
+                    energy_difference = total_energy(1, count_s, Emax_grid, count_mu) - total_energy(:, count_s, count_i, count_mu)
+                    do count_h = 1, 3
+                        
+                        if ( energy_difference(count_h) <= amin(count_h, count_s, count_i, count_mu)**2d0 ) then
+                            amax(count_h, count_s, count_i, count_mu) = 0d0
+
+                        else if ( amin(count_h, count_s, count_i, count_mu)**2d0 < energy_difference(count_h) &
+                            & .and. energy_difference(count_h) < 5d-1 * particle_mass(count_s) *speed_of_light**2d0 ) then
+                            amax(count_h, count_s, count_i, count_mu) = sqrt(energy_difference(count_h))
+
+                        else if ( energy_difference(count_h) >= 5d-1 * particle_mass(count_s) *speed_of_light**2d0 ) then
+                            amax(count_h, count_s, count_i, count_mu) = sqrt(particle_mass(count_s) / 2d0) * speed_of_light
+                        end if
+
+                    end do  !count_h
+                    
+                end do  !count_mu
+
+            end if
+            
+        end do  !count_i
+
+    end do  !count_s
+
+    
+end subroutine make_amax
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
