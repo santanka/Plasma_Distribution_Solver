@@ -433,3 +433,40 @@ subroutine calculation_integral_exp_erf(mu, alpha_mu, amax_mu, amin_mu, integral
     end do  !count_mu
   
 end subroutine calculation_integral_exp_erf
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_charge_density_from_number_density(number_density_diff, charge_number, charge_density_diff, &
+    & charge_density_plus_diff, charge_density_minus_diff)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(3, boundary_series_number, real_grid_number), intent(in) :: number_density_diff
+    double precision, dimension(boundary_series_number), intent(in) :: charge_number
+    double precision, dimension(3, real_grid_number), intent(out) :: charge_density_diff, charge_density_plus_diff
+    double precision, dimension(3, real_grid_number), intent(out) :: charge_density_minus_diff
+
+    integer :: count_s
+
+    charge_density_diff = 0d0
+    charge_density_plus_diff = 0d0
+    charge_density_minus_diff = 0d0
+
+    do count_s = 1, boundary_series_number
+        
+        charge_density_diff = charge_density_diff + charge_number(count_s) * number_density_diff(:, count_s, :)
+
+        if ( charge_number(count_s) > 0d0 ) then
+            charge_density_plus_diff = charge_density_plus_diff + charge_number(count_s) * number_density_diff(:, count_s, :)
+
+        else if ( charge_number(count_s) < 0d0 ) then
+            charge_density_minus_diff = charge_density_minus_diff + charge_number(count_s) * number_density_diff(:, count_s, :)
+            
+        end if
+
+    end do  !count_s
+
+end subroutine make_charge_density_from_number_density

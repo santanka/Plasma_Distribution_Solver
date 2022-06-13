@@ -41,8 +41,8 @@ module main_variables
     double precision, dimension(3, boundary_series_number, real_grid_number) :: potential_energy_diff
     double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, amax
     double precision, dimension(3, boundary_series_number, real_grid_number) :: number_density_diff
-    double precision, dimension(3, real_grid_number) :: charge_density, charge_density_plus, charge_density_minus
-    double precision, dimension(3, real_grid_number) :: charge_density_poisson
+    double precision, dimension(3, real_grid_number) :: charge_density_diff, charge_density_plus_diff, charge_density_minus_diff
+    double precision, dimension(3, real_grid_number) :: charge_density_poisson_diff
 
 
     !--------------
