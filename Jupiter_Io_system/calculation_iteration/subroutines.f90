@@ -470,3 +470,42 @@ subroutine make_charge_density_from_number_density(number_density_diff, charge_n
     end do  !count_s
 
 end subroutine make_charge_density_from_number_density
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_charge_density_from_Poisson_eq(electrostatic_potential_diff, diff_coordinate_FA, charge_density_poisson_diff)
+    use constant_parameter
+    use constant_in_the_simulation
+
+    implicit none
+    
+    double precision, dimension(3, real_grid_number), intent(in) :: electrostatic_potential_diff
+    double precision, dimension(real_grid_number - 1), intent(in) :: diff_coordinate_FA
+    double precision, dimension(3, real_grid_number), intent(out) :: charge_density_poisson_diff
+
+    integer :: count_i
+
+    do count_i = 1, real_grid_number
+        
+        if ( count_i == 1 .or. count_i == real_grid_number ) then
+            charge_density_poisson_diff(:, count_i) = 0d0
+
+        else
+            charge_density_poisson_diff(:, count_i) = electrostatic_potential_diff(1, count_i - 1) &
+                & / diff_coordinate_FA(count_i - 1) / (diff_coordinate_FA(count_i - 1) + diff_coordinate_FA(count_i))
+            
+            charge_density_poisson_diff(:, count_i) = charge_density_poisson_diff(:, count_i) &
+                & + electrostatic_potential_diff(1, count_i + 1) / diff_coordinate_FA(count_i) &
+                & / (diff_coordinate_FA(count_i - 1) + diff_coordinate_FA(count_i))
+            
+            charge_density_poisson_diff(:, count_i) = charge_density_poisson_diff(:, count_i) &
+                & - electrostatic_potential_diff(:, count_i) / diff_coordinate_FA(count_i - 1) / diff_coordinate_FA(count_i)
+
+            charge_density_poisson_diff(:, count_i) = - 2d0 * electric_constant * charge_density_poisson_diff(:, count_i)
+
+        end if
+
+    end do  !count_i
+
+    
+end subroutine make_charge_density_from_Poisson_eq
