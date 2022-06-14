@@ -31,8 +31,8 @@ program main
 
     !length2satellite
     if ( satellite_mass /= 0d0 ) then
-        length2satellite =  sqrt(length2planet**2d0 + (planet_radius * planet_l_shell)**2d0 &
-            & - 2d0 * length2planet * planet_radius * planet_l_shell * cos(mlat))
+        length2satellite =  sqrt(length2planet**2d0 + (planet_radius * satellite_l_shell)**2d0 &
+            & - 2d0 * length2planet * planet_radius * satellite_l_shell * cos(mlat))
     end if
 
     !coordinate_FA
@@ -120,30 +120,60 @@ program main
         call make_potential_energy_diff(mlat, length2planet, length2satellite, charge_number, particle_mass, &
             & electrostatic_potential_diff, potential_energy_diff)
 
+        call make_potential_plus_Bmu_diff(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, &
+            & potential_plus_Bmu_diff)
+
         
         !--------------
         ! accessibility
         !--------------
         
-        call make_amin(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, amin)
+        call make_amin(potential_plus_Bmu_diff, injection_grid_number, amin)
 
-        call make_amax(potential_energy_diff, adiabatic_invariant, magnetic_flux_density, injection_grid_number, particle_mass, &
-        & amin, amax)
+        call make_alim(potential_plus_Bmu_diff, injection_grid_number, particle_mass, amin, alim)
+
+        call make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_mass, amin, amax)
+
 
         !--------
         ! density
         !--------
 
         call make_number_density(boundary_number_density_diff, boundary_temperature_perp, boundary_temperature_para, &
-            & potential_energy_diff, magnetic_flux_density, adiabatic_invariant, injection_grid_number, particle_mass, amin, &
-            & amax, number_density_diff)
+            & potential_plus_Bmu_diff, magnetic_flux_density, adiabatic_invariant, injection_grid_number, amin, alim, amax, &
+            & number_density_diff)
+
+        call cannot_reach_check(number_density_diff, injection_grid_number)
 
         call make_charge_density_from_number_density(number_density_diff, charge_number, charge_density_diff, &
             & charge_density_plus_diff, charge_density_minus_diff)
 
+        do count_i = 1, real_grid_number
+            !do count_s = 1, boundary_series_number
+            !    gama(count_s) = potential_energy_diff(1, count_s, injection_grid_number(count_s))
+            !end do
+            !alpha_mu = magnetic_flux_density(count_i) * adiabatic_invariant(:, 500) / boundary_temperature_perp
+            !beta = (potential_energy_diff(1, :, count_i) - gama) / boundary_temperature_para
+            !amax_mu = amax(1, :, count_i, 500) / sqrt(boundary_temperature_para)
+            !amin_mu = amin(1, :, count_i, 500) / sqrt(boundary_temperature_para)
+            !print *, (1d0 + erf(amax_mu) - 2d0 * erf(amin_mu)) * exp(- alpha_mu - beta), &
+            !& (1d0 - erf(amin_mu)) * exp(- alpha_mu - beta)
+            print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
+            & charge_density_minus_diff(1, count_i)
+        end do
+
         call make_charge_density_from_Poisson_eq(electrostatic_potential_diff, diff_coordinate_FA, charge_density_poisson_diff)
 
         
+        !------------------
+        ! convergence check
+        !------------------
+
+        call make_convergence_number(charge_density_diff, charge_density_plus_diff, charge_density_minus_diff, &
+            & charge_density_poisson_diff, convergence_number_diff, convergence_number_sum)
+
+
+
         !-------
         ! finish
         !-------
@@ -153,8 +183,14 @@ program main
             do count_s = 1, boundary_series_number
                 do count_i = 1, real_grid_number
                     do count_mu = 1, adiabatic_invariant_grid_number
-                        if ( charge_density_poisson_diff(count_h, count_i) /= charge_density_poisson_diff(count_h, count_i) ) then
-                        print *, "NaN", count_h, count_s, count_i, count_mu
+                        if ( convergence_number_diff(count_h, count_i) /= convergence_number_diff(count_h, count_i) ) then
+                            if ( count_mu == 1 .and. count_s == 1 .and. count_h == 1 ) & !
+                            & print *, "NaN", count_h, count_s, count_i, count_mu
+
+                        else if ( convergence_number_diff(count_h, count_i) == 0d0 ) then
+                            if ( count_mu == 1 .and. count_s == 1 .and. count_h == 1 ) & !
+                            & print *, "0", count_h, count_s, count_i, count_mu
+
                         end if
                     end do
                 end do

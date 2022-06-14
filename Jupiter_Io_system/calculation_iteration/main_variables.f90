@@ -39,7 +39,9 @@ module main_variables
     double precision, dimension(3, real_grid_number) :: electrostatic_potential_diff
     double precision, dimension(3, boundary_series_number) :: boundary_number_density_diff
     double precision, dimension(3, boundary_series_number, real_grid_number) :: potential_energy_diff
-    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, amax
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, amax, alim
+    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: &
+        & potential_plus_Bmu_diff
     double precision, dimension(3, boundary_series_number, real_grid_number) :: number_density_diff
     double precision, dimension(3, real_grid_number) :: charge_density_diff, charge_density_plus_diff, charge_density_minus_diff
     double precision, dimension(3, real_grid_number) :: charge_density_poisson_diff
@@ -50,9 +52,11 @@ module main_variables
     !--------------
 
     double precision, dimension(real_grid_number) :: electrostatic_potential
-    double precision, dimension(3, real_grid_number) :: convergence_number
+    double precision, dimension(3, real_grid_number) :: convergence_number_diff
     double precision :: convergence_number_sum
     double precision :: convergence_number_sum_min
+
+    double precision, dimension(boundary_series_number) :: alpha_mu, beta, amax_mu, amin_mu, gama
 
 
     !--------
