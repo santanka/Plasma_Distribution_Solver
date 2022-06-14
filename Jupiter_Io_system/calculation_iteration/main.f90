@@ -104,6 +104,7 @@ program main
     !----------------
 
     count_iteration = 0
+    convergence_number_sum_min = 1d0
 
     do  !count_iteration
         count_iteration = count_iteration + 1
@@ -172,7 +173,43 @@ program main
         call make_convergence_number(charge_density_diff, charge_density_plus_diff, charge_density_minus_diff, &
             & charge_density_poisson_diff, convergence_number_diff, convergence_number_sum)
 
+        if ( convergence_number_sum_min > convergence_number_sum ) then
+            convergence_number_sum_min = convergence_number_sum
+        end if
 
+        if ( convergence_number_sum_min < 1d-7 .or. count_iteration == 1 ) then
+            call make_result_file_name(result_file)
+            call make_result_file_format(format_character)
+            print *, format_character
+            open(50, file = result_file)
+            do count_i = 1, real_grid_number
+
+                write(50, format_character) coordinate_FA(count_i), length2planet(count_i), mlat(count_i), &
+                    & magnetic_flux_density(count_i), initial_electrostatic_potential(count_i), &
+                    & electrostatic_potential_diff(1, count_i), number_density_diff(1, :, count_i), &
+                    & charge_density_diff(1, count_i), charge_density_poisson_diff(1, count_i), &
+                    & convergence_number_diff(1, count_i)
+
+            end do
+            do count_s = 1, boundary_series_number
+                
+                write(50, "(1PE25.15E3, 4(',', 1PE25.15E3), ',', I25)") boundary_number_density_diff(1, count_s), &
+                    & boundary_temperature_perp(count_s) / elementary_charge, &
+                    & boundary_temperature_para(count_s) / elementary_charge, charge_number(count_s) / elementary_charge, &
+                    & particle_mass(count_s), injection_grid_number(count_s)
+
+            end do
+        end if
+
+        if ( convergence_number_sum_min < 1d-7 ) then
+            print *, "finish(converge)"
+            exit
+        end if
+
+        if ( count_iteration == 1d4 ) then
+            print *, "finish(not converge)"
+        end if
+        
 
         !-------
         ! finish
@@ -199,7 +236,7 @@ program main
 
         print *, count_iteration
 
-        if (count_iteration == 3) then
+        if (count_iteration == 1) then
             exit
         end if 
 

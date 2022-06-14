@@ -56,14 +56,19 @@ module main_variables
     double precision :: convergence_number_sum
     double precision :: convergence_number_sum_min
 
-    double precision, dimension(boundary_series_number) :: alpha_mu, beta, amax_mu, amin_mu, gama
-
 
     !--------
     ! counter
     !--------
 
     integer :: count_iteration, count_h, count_s, count_i, count_mu
+
+
+    !----------
+    ! file name
+    !----------
+
+    character(len = 180) :: result_file, format_character
 
 
     !------

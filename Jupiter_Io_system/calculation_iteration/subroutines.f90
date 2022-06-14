@@ -799,3 +799,38 @@ end subroutine make_convergence_number
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
+subroutine make_result_file_name(result_file)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    character(len = 180), intent(out) ::  result_file
+    character(len = 3) :: grid_front, grid_back, file_number
+
+    write(grid_front, "(I3.2)") initial_grid_ionophere_middle_1
+    write(grid_back, "(I3.2)") initial_grid_middle_magnetosphere_1
+    write(file_number, "(I3.2)") boundary_file_number
+
+    result_file = result_file_front // "_" // grid_front // "_" // grid_back // "_BC_" // file_number // ".csv"
+    
+end subroutine make_result_file_name
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_result_file_format(format_character)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    character(len = 33), intent(out) ::  format_character
+    character(len = 2) :: series_number
+
+    write(series_number, "(I2.1)") boundary_series_number + 8
+
+    format_character = "(1PE25.15E3, " // series_number // "(',', 1PE25.15E3))"
+
+end subroutine make_result_file_format
