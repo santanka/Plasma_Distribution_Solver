@@ -149,20 +149,6 @@ program main
         call make_charge_density_from_number_density(number_density_diff, charge_number, charge_density_diff, &
             & charge_density_plus_diff, charge_density_minus_diff)
 
-        do count_i = 1, real_grid_number
-            !do count_s = 1, boundary_series_number
-            !    gama(count_s) = potential_energy_diff(1, count_s, injection_grid_number(count_s))
-            !end do
-            !alpha_mu = magnetic_flux_density(count_i) * adiabatic_invariant(:, 500) / boundary_temperature_perp
-            !beta = (potential_energy_diff(1, :, count_i) - gama) / boundary_temperature_para
-            !amax_mu = amax(1, :, count_i, 500) / sqrt(boundary_temperature_para)
-            !amin_mu = amin(1, :, count_i, 500) / sqrt(boundary_temperature_para)
-            !print *, (1d0 + erf(amax_mu) - 2d0 * erf(amin_mu)) * exp(- alpha_mu - beta), &
-            !& (1d0 - erf(amin_mu)) * exp(- alpha_mu - beta)
-            print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
-            & charge_density_minus_diff(1, count_i)
-        end do
-
         call make_charge_density_from_Poisson_eq(electrostatic_potential_diff, diff_coordinate_FA, charge_density_poisson_diff)
 
         
@@ -180,7 +166,6 @@ program main
         if ( convergence_number_sum_min < 1d-7 .or. count_iteration == 1 ) then
             call make_result_file_name(result_file)
             call make_result_file_format(format_character)
-            print *, format_character
             open(50, file = result_file)
             do count_i = 1, real_grid_number
 
@@ -211,6 +196,28 @@ program main
         end if
         
 
+        !------------------------------
+        ! update by using Newton method
+        !------------------------------
+
+        call Newton_method_for_electrostatic_potential(electrostatic_potential_diff, convergence_number_diff, &
+            & electrostatic_potential)
+
+        do count_i = 1, real_grid_number
+            !do count_s = 1, boundary_series_number
+            !    gama(count_s) = potential_energy_diff(1, count_s, injection_grid_number(count_s))
+            !end do
+            !alpha_mu = magnetic_flux_density(count_i) * adiabatic_invariant(:, 500) / boundary_temperature_perp
+            !beta = (potential_energy_diff(1, :, count_i) - gama) / boundary_temperature_para
+            !amax_mu = amax(1, :, count_i, 500) / sqrt(boundary_temperature_para)
+            !amin_mu = amin(1, :, count_i, 500) / sqrt(boundary_temperature_para)
+            !print *, (1d0 + erf(amax_mu) - 2d0 * erf(amin_mu)) * exp(- alpha_mu - beta), &
+            !& (1d0 - erf(amin_mu)) * exp(- alpha_mu - beta)
+            print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
+            & charge_density_minus_diff(1, count_i), electrostatic_potential(count_i), count_i, convergence_number_diff(1, count_i)
+        end do
+
+
         !-------
         ! finish
         !-------
@@ -234,11 +241,11 @@ program main
             end do
         end do
 
-        print *, count_iteration
+        print *, count_iteration, convergence_number_sum_min, convergence_number_sum
 
-        if (count_iteration == 1) then
-            exit
-        end if 
+!        if (count_iteration == 10) then
+!            exit
+!        end if 
 
     end do !count_iteration
 

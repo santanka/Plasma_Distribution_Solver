@@ -68,7 +68,7 @@ module main_variables
     ! file name
     !----------
 
-    character(len = 180) :: result_file, format_character
+    character(len = 188) :: result_file, format_character
 
 
     !------

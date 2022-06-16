@@ -23,7 +23,7 @@ subroutine make_adiabatic_invariant(particle_mass, magnetic_flux_density, inject
                 adiabatic_invariant(count_s, count_mu) = 0d0
             else if ( count_mu /= 1 ) then
                 adiabatic_invariant(count_s, count_mu) &
-                    & = 1d-30 * (max_mu / 1d-30)**(dble(count_mu - 2) / dble(adiabatic_invariant_grid_number - 2))
+                    & = 1d-20 * (max_mu / 1d-20)**(dble(count_mu - 2) / dble(adiabatic_invariant_grid_number - 2))
             end if
 
         end do  !count_mu
@@ -37,6 +37,7 @@ end subroutine make_adiabatic_invariant
 subroutine make_electrostatic_potential_diff(electrostatic_potential,  electrostatic_potential_diff)
     use constant_parameter
     use constant_in_the_simulation
+    use boundary_and_initial_conditions
 
     implicit none
     
@@ -44,8 +45,16 @@ subroutine make_electrostatic_potential_diff(electrostatic_potential,  electrost
     double precision, dimension(3, real_grid_number), intent(out) ::  electrostatic_potential_diff
 
     electrostatic_potential_diff(1, :) = electrostatic_potential
-    electrostatic_potential_diff(2, :) = electrostatic_potential + 1d-7
-    electrostatic_potential_diff(3, :) = electrostatic_potential - 1d-7
+    electrostatic_potential_diff(2, :) = electrostatic_potential + 1d-6
+    electrostatic_potential_diff(3, :) = electrostatic_potential - 1d-6
+    electrostatic_potential_diff(2, 1) = electrostatic_potential(1)
+    electrostatic_potential_diff(2, real_grid_number) = electrostatic_potential(real_grid_number)
+    electrostatic_potential_diff(3, 1) = electrostatic_potential(1)
+    electrostatic_potential_diff(3, real_grid_number) = electrostatic_potential(real_grid_number)
+    if ( initial_fix_grid > initial_min_grid_1 .and. initial_fix_grid < initial_min_grid_2 ) then
+        electrostatic_potential_diff(2, initial_fix_grid) = electrostatic_potential(initial_fix_grid)
+        electrostatic_potential_diff(3, initial_fix_grid) = electrostatic_potential(initial_fix_grid)
+    end if
         
 end subroutine make_electrostatic_potential_diff
 !
@@ -309,14 +318,14 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
 
             else if ( count_i == injection_grid_number(count_s) .and. injection_grid_number(count_s) /= 1 &
                 & .and. injection_grid_number(count_s) /= real_grid_number ) then
-                amax(:, count_s, count_i, :) = 1d100
+                amax(:, count_s, count_i, :) = sqrt(particle_mass(count_s) / 2d0) * speed_of_light
             
             else
                 do count_mu = 1, adiabatic_invariant_grid_number
 
                     if ( count_i < injection_grid_number(count_s) .or. injection_grid_number(count_s) == real_grid_number ) then
                         Emax_grid = 1
-                        do count4max = 1, count_i
+                        do count4max = 1, count_i - 1
 
                             if ( potential_plus_Bmu_diff(1, count_s, count4max, count_mu) &
                                 & > potential_plus_Bmu_diff(1, count_s, Emax_grid, count_mu) ) then
@@ -402,10 +411,11 @@ subroutine make_number_density(boundary_number_density_diff, boundary_temperatur
             
             do count_i = 1, real_grid_number
                 
+                integral = 0d0
                 coefficient4integral = (potential_plus_Bmu_diff(count_h, count_s, count_i, :) &
                     & - potential_plus_Bmu_diff(count_h, count_s, injection_grid_number(count_s), :)) &
-                    & / boundary_temperature_para(count_s) + magnetic_flux_density(count_i) * adiabatic_invariant(count_s, :) &
-                    & / boundary_temperature_perp(count_s)
+                    & / boundary_temperature_para(count_s) + magnetic_flux_density(injection_grid_number(count_s)) &
+                    & * adiabatic_invariant(count_s, :) / boundary_temperature_perp(count_s)
                 
                 xmin = amin(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
                 xlim = alim(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
@@ -458,7 +468,7 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
                 if ( xmax(count_mu) <= xmin(count_mu) ) then
                     do count_x = 2, adiabatic_invariant_grid_number
 
-                        xmin2xlim(count_x) = 1d-30 * (xlim(count_mu) / 1d-30)**(dble(count_x - 2) &
+                        xmin2xlim(count_x) = 1d0 * (xlim(count_mu) / 1d0)**(dble(count_x - 2) &
                             & / dble(adiabatic_invariant_grid_number - 2))
                     
                     end do  !count_x
@@ -468,10 +478,10 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
                     xmin2xmax(1) = 0d0
                     do count_x = 2, adiabatic_invariant_grid_number
 
-                        xmin2xlim(count_x) = 1d-30 * (xlim(count_mu) / 1d-30)**(dble(count_x - 2) &
+                        xmin2xlim(count_x) = 1d0 * (xlim(count_mu) / 1d0)**(dble(count_x - 2) &
                             & / dble(adiabatic_invariant_grid_number - 2))
 
-                        xmin2xmax(count_x) = 1d-30 * (xmax(count_mu) / 1d-30)**(dble(count_x - 2) &
+                        xmin2xmax(count_x) = 1d0 * (xmax(count_mu) / 1d0)**(dble(count_x - 2) &
                             & / dble(adiabatic_invariant_grid_number - 2))
                     
                     end do  !count_x
@@ -501,6 +511,7 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
 
             end if
 
+
             do count_x = 1, adiabatic_invariant_grid_number - 1
 
                 integral_former_x = exp(- (xmin2xlim(count_x))**2d0 - coefficient4integral(count_mu))
@@ -514,11 +525,9 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
                     integral_latter_x = exp(- (xmin2xmax(count_x + 1))**2d0 - coefficient4integral(count_mu))
 
                     result_halfway(count_mu) = result_halfway(count_mu) + (integral_former_x + integral_latter_x) / 2d0 &
-                        & * (xmin2xlim(count_x + 1) - xmin2xlim(count_x))
+                        & * (xmin2xmax(count_x + 1) - xmin2xmax(count_x))
 
                 end if
-
-                !print *, xmin2xlim(count_x), xmin2xmax(count_x), integral_former_x, integral_latter_x
 
             end do  !count_x
         
@@ -534,117 +543,6 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
     end do  !count_mu
 
 end subroutine calculation_x_mu_integral
-!
-!-----------------------------------------------------------------------------------------------------------------------------------
-!
-!subroutine make_number_density(boundary_number_density_diff, boundary_temperature_perp, boundary_temperature_para, &
-!    & potential_energy_diff, magnetic_flux_density, adiabatic_invariant, injection_grid_number, amin, amax, number_density_diff)
-!    use constant_parameter
-!    use constant_in_the_simulation
-!    use boundary_and_initial_conditions
-!
-!    implicit none
-!    
-!    double precision, dimension(3, boundary_series_number), intent(in) :: boundary_number_density_diff
-!    double precision, dimension(boundary_series_number), intent(in) :: boundary_temperature_perp, boundary_temperature_para
-!    double precision, dimension(3, boundary_series_number, real_grid_number), intent(in) :: potential_energy_diff
-!    double precision, dimension(real_grid_number), intent(in) :: magnetic_flux_density
-!    double precision, dimension(boundary_series_number, adiabatic_invariant_grid_number), intent(in) :: adiabatic_invariant
-!    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
-!    double precision, dimension(3, boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, amax
-!    double precision, dimension(3, boundary_series_number, real_grid_number), intent(out) :: number_density_diff
-!
-!    integer :: count_h, count_s, count_i
-!    double precision :: integral, beta
-!    double precision, dimension(adiabatic_invariant_grid_number) :: alpha_mu, amax_mu, amin_mu
-!
-!    do count_s = 1, boundary_series_number
-!        
-!        do count_i = 1, real_grid_number
-!            
-!            if ( count_i == injection_grid_number(count_s) ) then
-!                do count_h = 1, 3
-!                    alpha_mu = magnetic_flux_density(count_i) * adiabatic_invariant(count_s, :) / boundary_temperature_perp(count_s)
-!                    beta = 0d0
-!                    amax_mu = amax(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
-!                    amin_mu = 0d0
-!
-!                    call calculation_integral_exp_erf(adiabatic_invariant(count_s, :), alpha_mu, beta, amax_mu, amin_mu, integral)
-!                
-!                    number_density_diff(count_h, count_s, count_i) = boundary_number_density_diff(count_h, count_s) &
-!                    & * magnetic_flux_density(count_i) / 2d0 / boundary_temperature_perp(count_s) * integral
-!                end do  !count_h
-!
-!            else if ( count_i /= injection_grid_number(count_s) ) then
-!                do count_h = 1, 3
-!
-!                    alpha_mu = (magnetic_flux_density(injection_grid_number(count_s)) / boundary_temperature_perp(count_s) &
-!                        & + (magnetic_flux_density(count_i) - magnetic_flux_density(injection_grid_number(count_s))) &
-!                        & / boundary_temperature_para(count_s)) * adiabatic_invariant(count_s, :)
-!                    
-!                    beta = (potential_energy_diff(count_h, count_s, count_i) &
-!                        & - potential_energy_diff(1, count_s, injection_grid_number(count_s))) / boundary_temperature_para(count_s)
-!
-!                    amax_mu = amax(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
-!                    amin_mu = amin(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
-!
-!                    call calculation_integral_exp_erf(adiabatic_invariant(count_s, :), alpha_mu, beta, amax_mu, amin_mu, integral)
-!
-!                    number_density_diff(count_h, count_s, count_i) = integral
-!                    !number_density_diff(count_h, count_s, count_i) = boundary_number_density_diff(count_h, count_s) &
-!                    !    & * magnetic_flux_density(count_i) / 2d0 / boundary_temperature_perp(count_s) * integral
-!
-!                end do  !count_h
-!                
-!            end if
-!
-!        end do  !count_i
-!
-!    end do  !count_s
-!    
-!end subroutine make_number_density
-!
-!-----------------------------------------------------------------------------------------------------------------------------------
-!
-!subroutine calculation_integral_exp_erf(mu, alpha_mu, beta, amax_mu, amin_mu, integral_result)
-!    use constant_parameter
-!    use constant_in_the_simulation
-!
-!    implicit none
-!    
-!    double precision, dimension(adiabatic_invariant_grid_number), intent(in) :: mu, alpha_mu, amax_mu, amin_mu
-!    double precision, intent(in) :: beta
-!    double precision, intent(out) :: integral_result
-!
-!    integer :: count_mu
-!    double precision :: integral_former, integral_latter
-!
-!    integral_result = 0d0
-!
-!    do count_mu = 1, adiabatic_invariant_grid_number - 1
-!
-!        if ( amax_mu(count_mu) > amin_mu(count_mu) ) then
-!            integral_former = exp(- alpha_mu(count_mu) - beta) * (1d0 + erf(amax_mu(count_mu)) - 2d0 * erf(amin_mu(count_mu)))
-!
-!        else if ( amax_mu(count_mu) <= amin_mu(count_mu) ) then
-!            integral_former = exp(- alpha_mu(count_mu) - beta) * (1d0 - erf(amin_mu(count_mu)))
-!
-!        end if
-!
-!        if ( amax_mu(count_mu + 1) > amin_mu(count_mu + 1) ) then
-!            integral_latter = exp(- alpha_mu(count_mu + 1) - beta) * (1d0 + erf(amax_mu(count_mu + 1)) &
-!                & - 2d0 * erf(amin_mu(count_mu + 1)))
-!
-!        else if ( amax_mu(count_mu + 1) <= amin_mu(count_mu + 1) ) then
-!            integral_latter = exp(- alpha_mu(count_mu + 1) - beta) * (1d0 - erf(amin_mu(count_mu + 1)))
-!
-!        end if
-!
-!        integral_result = integral_result + (integral_former + integral_latter) / 2d0 * (mu(count_mu + 1) - mu(count_mu))
-!
-!    end do  !count_mu
-!  
-!end subroutine calculation_integral_exp_erf
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
@@ -806,14 +704,16 @@ subroutine make_result_file_name(result_file)
 
     implicit none
     
-    character(len = 180), intent(out) ::  result_file
-    character(len = 3) :: grid_front, grid_back, file_number
+    character(len = 59), intent(out) ::  result_file
+    character(len = 3) :: grid_front, grid_back, file_number, min_grid
 
-    write(grid_front, "(I3.2)") initial_grid_ionophere_middle_1
-    write(grid_back, "(I3.2)") initial_grid_middle_magnetosphere_1
-    write(file_number, "(I3.2)") boundary_file_number
+    write(grid_front, "(I3.3)") initial_grid_ionophere_middle_1
+    write(grid_back, "(I3.3)") initial_grid_middle_magnetosphere_1
+    write(file_number, "(I3.3)") boundary_file_number
+    write(min_grid, "(I3.3)") initial_min_grid_1
 
-    result_file = result_file_front // "_" // grid_front // "_" // grid_back // "_BC_" // file_number // ".csv"
+    result_file = result_file_front // "_" // grid_front // "_" // grid_back // "_BC_" // file_number &
+        & // "_min_" // min_grid //".csv"
     
 end subroutine make_result_file_name
 !
@@ -834,3 +734,217 @@ subroutine make_result_file_format(format_character)
     format_character = "(1PE25.15E3, " // series_number // "(',', 1PE25.15E3))"
 
 end subroutine make_result_file_format
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_diff, convergence_number_diff, electrostatic_potential)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(3, real_grid_number), intent(in) :: electrostatic_potential_diff, convergence_number_diff
+    double precision, dimension(real_grid_number), intent(out) :: electrostatic_potential
+
+    integer :: count_i
+    double precision :: update
+    double precision, dimension(initial_min_grid_1 - 1) :: sorting_potential_1, sorting_potential_1_reverse
+    double precision, dimension(real_grid_number - initial_min_grid_2) :: sorting_potential_2
+    double precision, dimension(initial_fix_grid - initial_min_grid_1 - 1) :: sorting_potential_3
+    double precision, dimension(initial_min_grid_2 - initial_fix_grid - 1) :: sorting_potential_4, sorting_potential_4_reverse
+
+    !----------
+    ! iteration
+    !----------
+
+    electrostatic_potential = electrostatic_potential_diff(1, :)
+
+    do count_i = 2, real_grid_number - 1
+        
+        if ( count_i /= initial_fix_grid .and. (convergence_number_diff(1, count_i) > convergence_number_diff(2, count_i) &
+            & .or. convergence_number_diff(1, count_i) > convergence_number_diff(3, count_i)) ) then
+            
+            if ( convergence_number_diff(1, count_i) == convergence_number_diff(2, count_i) ) then
+                update = (electrostatic_potential_diff(1, count_i) - electrostatic_potential_diff(3, count_i)) &
+                    & / (convergence_number_diff(1, count_i) - convergence_number_diff(3, count_i)) &
+                    & * convergence_number_diff(1, count_i)
+
+            else if ( convergence_number_diff(1, count_i) == convergence_number_diff(3, count_i) ) then
+                update = (electrostatic_potential_diff(2, count_i) - electrostatic_potential_diff(1, count_i)) &
+                    & / (convergence_number_diff(2, count_i) - convergence_number_diff(1, count_i)) &
+                    & * convergence_number_diff(1, count_i)
+
+            else
+                update = ((electrostatic_potential_diff(1, count_i) - electrostatic_potential_diff(3, count_i)) &
+                    & / (convergence_number_diff(1, count_i) - convergence_number_diff(3, count_i)) &
+                    & + (electrostatic_potential_diff(2, count_i) - electrostatic_potential_diff(1, count_i)) &
+                    & / (convergence_number_diff(2, count_i) - convergence_number_diff(1, count_i))) / 2d0 &
+                    & * convergence_number_diff(1, count_i)
+                
+            end if
+
+            if ( abs(update) < sqrt(convergence_number_diff(1, count_i)) &
+                & .and. sqrt(convergence_number_diff(1, count_i)) <= 5d0 ) then
+                electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update
+
+            else if ( abs(update) >= sqrt(convergence_number_diff(1, count_i)) &
+                & .and. sqrt(convergence_number_diff(1, count_i)) <= 5d0 ) then
+                electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) &
+                    & * sqrt(convergence_number_diff(1, count_i))
+            
+            else if ( abs(update) < 5d-1 .and. sqrt(convergence_number_diff(1, count_i)) > 5d0 ) then
+                electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update
+
+            else if ( abs(update) >= 5d-1 .and. sqrt(convergence_number_diff(1, count_i)) > 5d0 ) then
+                electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) * 5d-1
+                
+            end if
+            
+        end if
+
+    end do  !count_i
+
+
+    !--------
+    ! sorting
+    !--------
+
+    sorting_potential_1 = electrostatic_potential(2:initial_min_grid_1)
+    do count_i = 1, initial_min_grid_1 - 1
+
+        if ( sorting_potential_1(count_i) > electrostatic_potential(1) ) then
+            sorting_potential_1(count_i) = 2d0 * electrostatic_potential(1) &
+                & - sorting_potential_1(count_i) 
+        end if
+
+    end do  !count_i    
+    call heapsort(initial_min_grid_1 - 1, sorting_potential_1)
+
+
+    sorting_potential_2 = electrostatic_potential(initial_min_grid_2:real_grid_number-1)
+    do count_i = 1, real_grid_number - initial_min_grid_2
+
+        if ( sorting_potential_2(count_i) > electrostatic_potential(real_grid_number) ) then
+            sorting_potential_2(count_i) = 2d0 * electrostatic_potential(real_grid_number) &
+                & - sorting_potential_2(count_i) 
+        end if
+
+    end do
+
+    call heapsort(real_grid_number - initial_min_grid_2, sorting_potential_2)
+
+    do count_i = 1, initial_min_grid_1 - 1
+        
+        sorting_potential_1_reverse(count_i) = sorting_potential_1(initial_min_grid_1 - count_i)
+
+    end do  !count_i
+
+    if ( initial_fix_grid > initial_min_grid_1 .and. initial_fix_grid < initial_min_grid_2 ) then
+        sorting_potential_3 = electrostatic_potential(initial_min_grid_1 + 1:initial_fix_grid - 1)
+        sorting_potential_4 = electrostatic_potential(initial_fix_grid + 1:initial_min_grid_2 - 1)
+
+        do count_i = 1, initial_fix_grid - initial_min_grid_1 - 1
+
+            if ( sorting_potential_3(count_i) > electrostatic_potential(initial_fix_grid) ) then
+                sorting_potential_3(count_i) = 2d0 * electrostatic_potential(initial_fix_grid) &
+                    & - sorting_potential_3(count_i) 
+            end if
+    
+        end do  !count_i
+
+        do count_i = 1, initial_min_grid_2 - initial_fix_grid - 1
+
+            if ( sorting_potential_4(count_i) > electrostatic_potential(initial_fix_grid) ) then
+                sorting_potential_4(count_i) = 2d0 * electrostatic_potential(initial_fix_grid) &
+                    & - sorting_potential_4(count_i) 
+            end if
+    
+        end do  !count_i
+
+        call heapsort(initial_fix_grid - initial_min_grid_1, sorting_potential_3)
+        call heapsort(initial_min_grid_2 - initial_fix_grid, sorting_potential_4)
+
+        do count_i = 1, initial_min_grid_2 - initial_fix_grid - 1
+        
+            sorting_potential_4_reverse(count_i) = sorting_potential_4(initial_min_grid_2 - initial_fix_grid - count_i)
+    
+        end do  !count_i
+
+    end if
+
+    do count_i = 1, real_grid_number
+        
+        if ( count_i > 1 .and. count_i <= initial_min_grid_1) then
+            electrostatic_potential(count_i) = sorting_potential_1_reverse(count_i - 1)
+        
+        else if ( initial_min_grid_1 < count_i .and. count_i < initial_fix_grid .and. initial_fix_grid > initial_min_grid_1 &
+            & .and. initial_fix_grid < initial_min_grid_2 ) then
+            electrostatic_potential(count_i) = sorting_potential_3(count_i - initial_min_grid_1)
+        
+        else if ( initial_fix_grid < count_i .and. count_i < initial_min_grid_2 .and. initial_fix_grid > initial_min_grid_1 &
+            & .and. initial_fix_grid < initial_min_grid_2 ) then
+            electrostatic_potential(count_i) = sorting_potential_4_reverse(count_i - initial_fix_grid)
+        
+        else if ( count_i >= initial_min_grid_2 .and. count_i < real_grid_number ) then
+            electrostatic_potential(count_i) = sorting_potential_2(count_i - initial_min_grid_2 + 1)
+
+        end if
+
+    end do  !count_i
+
+end subroutine Newton_method_for_electrostatic_potential
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine heapsort(n,array)
+    ! https://slpr.sakura.ne.jp/qp/sortf90/
+    implicit none
+    integer,intent(in) :: n
+    double precision,intent(inout) :: array(1:n)
+   
+    integer ::i,k,j,l
+    double precision :: t
+   
+    if(n.le.0)then
+       write(6,*)"Error, at heapsort"; stop
+    endif
+    if(n.eq.1)return
+  
+    l=n/2+1
+    k=n
+    do while(k.ne.1)
+       if(l.gt.1)then
+          l=l-1
+          t=array(L)
+       else
+          t=array(k)
+          array(k)=array(1)
+          k=k-1
+          if(k.eq.1) then
+             array(1)=t
+             exit
+          endif
+       endif
+       i=l
+       j=l+l
+       do while(j.le.k)
+          if(j.lt.k)then
+             if(array(j).lt.array(j+1))j=j+1
+          endif
+          if (t.lt.array(j))then
+             array(i)=array(j)
+             i=j
+             j=j+j
+          else
+             j=k+1
+          endif
+       enddo
+       array(i)=t
+    enddo
+  
+    return
+end subroutine heapsort
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
