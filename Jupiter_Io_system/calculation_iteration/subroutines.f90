@@ -402,7 +402,7 @@ subroutine make_number_density(boundary_number_density_diff, boundary_temperatur
     double precision, dimension(3, boundary_series_number, real_grid_number), intent(out) :: number_density_diff
 
     integer :: count_h, count_s, count_i
-    double precision :: integral
+    double precision :: integral, sqrt_temperature_para
     double precision, dimension(adiabatic_invariant_grid_number) :: coefficient4integral, xmin, xlim, xmax
 
     do count_h = 1, 3
@@ -416,10 +416,12 @@ subroutine make_number_density(boundary_number_density_diff, boundary_temperatur
                     & - potential_plus_Bmu_diff(count_h, count_s, injection_grid_number(count_s), :)) &
                     & / boundary_temperature_para(count_s) + magnetic_flux_density(injection_grid_number(count_s)) &
                     & * adiabatic_invariant(count_s, :) / boundary_temperature_perp(count_s)
+
+                sqrt_temperature_para = sqrt(boundary_temperature_para(count_s))
                 
-                xmin = amin(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
-                xlim = alim(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
-                xmax = amax(count_h, count_s, count_i, :) / sqrt(boundary_temperature_para(count_s))
+                xmin = amin(count_h, count_s, count_i, :) / sqrt_temperature_para
+                xlim = alim(count_h, count_s, count_i, :) / sqrt_temperature_para
+                xmax = amax(count_h, count_s, count_i, :) / sqrt_temperature_para
 
                 call calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adiabatic_invariant(count_s, :), integral)
 
@@ -729,7 +731,7 @@ subroutine make_result_file_format(format_character)
     character(len = 33), intent(out) ::  format_character
     character(len = 2) :: series_number
 
-    write(series_number, "(I2.1)") boundary_series_number + 8
+    write(series_number, "(I2.1)") boundary_series_number + 9
 
     format_character = "(1PE25.15E3, " // series_number // "(',', 1PE25.15E3))"
 
@@ -850,7 +852,7 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
                 sorting_potential_3(count_i) = 2d0 * electrostatic_potential(initial_fix_grid) &
                     & - sorting_potential_3(count_i) 
             end if
-    
+            
         end do  !count_i
 
         do count_i = 1, initial_min_grid_2 - initial_fix_grid - 1
@@ -859,12 +861,12 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
                 sorting_potential_4(count_i) = 2d0 * electrostatic_potential(initial_fix_grid) &
                     & - sorting_potential_4(count_i) 
             end if
-    
+            
         end do  !count_i
 
         call heapsort(initial_fix_grid - initial_min_grid_1, sorting_potential_3)
         call heapsort(initial_min_grid_2 - initial_fix_grid, sorting_potential_4)
-
+        
         do count_i = 1, initial_min_grid_2 - initial_fix_grid - 1
         
             sorting_potential_4_reverse(count_i) = sorting_potential_4(initial_min_grid_2 - initial_fix_grid - count_i)
@@ -948,3 +950,52 @@ end subroutine heapsort
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
+subroutine Newton_method_for_boundary_number_density(boundary_number_density_diff, convergence_number_diff, injection_grid_number, &
+    & boundary_number_density)
+    use constant_parameter
+    use constant_in_the_simulation
+    use boundary_and_initial_conditions
+
+    implicit none
+    
+    double precision, dimension(3, boundary_series_number), intent(in) :: boundary_number_density_diff
+    double precision, dimension(3, real_grid_number), intent(in) :: convergence_number_diff
+    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
+    double precision, dimension(boundary_series_number), intent(out) :: boundary_number_density
+
+    integer :: count_s, check_s, check_i
+    double precision :: update
+
+    boundary_number_density = boundary_number_density_diff(1, :)
+
+    do count_s = 1, boundary_series_number
+
+        if ( count_s == boundary_ionosphere_1_variable_species .or. count_s == boundary_ionosphere_2_variable_species &
+            & .or. count_s == boundary_magnetosphere_variable_species ) then
+            check_s = count_s
+            check_i = injection_grid_number(check_s)
+            
+            if ( convergence_number_diff(1, check_i) > convergence_number_diff(2, check_i) &
+            & .or. convergence_number_diff(1, check_i) > convergence_number_diff(3, check_i) ) then
+
+                update = ((boundary_number_density_diff(1, check_s) - boundary_number_density_diff(3, check_s)) &
+                    & / (convergence_number_diff(1, check_i) - convergence_number_diff(3, check_i)) &
+                    & + (boundary_number_density_diff(2, check_s) - boundary_number_density_diff(1, check_s)) &
+                    & / (convergence_number_diff(2, check_i) - convergence_number_diff(1, check_i))) / 2d0 &
+                    & * convergence_number_diff(1, check_i)
+
+                boundary_number_density(check_s) = boundary_number_density_diff(1, check_s) - update
+
+                if ( boundary_number_density(check_s) < 0d0 ) then
+                    print *, "boundary_number_density < 0d0"
+                    stop
+                end if
+                
+            end if
+
+        end if
+
+    end do  !count_i
+
+    
+end subroutine Newton_method_for_boundary_number_density

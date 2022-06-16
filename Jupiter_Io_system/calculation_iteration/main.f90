@@ -163,14 +163,14 @@ program main
             convergence_number_sum_min = convergence_number_sum
         end if
 
-        if ( convergence_number_sum_min < 1d-7 .or. count_iteration == 1 ) then
+        if ( convergence_number_sum_min < 1d-7 .or. count_iteration == 1E4 ) then
             call make_result_file_name(result_file)
             call make_result_file_format(format_character)
             open(50, file = result_file)
             do count_i = 1, real_grid_number
 
                 write(50, format_character) coordinate_FA(count_i), length2planet(count_i), mlat(count_i), &
-                    & magnetic_flux_density(count_i), initial_electrostatic_potential(count_i), &
+                    & mlat(count_i) * deg_per_rad, magnetic_flux_density(count_i), initial_electrostatic_potential(count_i), &
                     & electrostatic_potential_diff(1, count_i), number_density_diff(1, :, count_i), &
                     & charge_density_diff(1, count_i), charge_density_poisson_diff(1, count_i), &
                     & convergence_number_diff(1, count_i)
@@ -191,7 +191,7 @@ program main
             exit
         end if
 
-        if ( count_iteration == 1d4 ) then
+        if ( count_iteration == 1E4 ) then
             print *, "finish(not converge)"
         end if
         
@@ -203,78 +203,22 @@ program main
         call Newton_method_for_electrostatic_potential(electrostatic_potential_diff, convergence_number_diff, &
             & electrostatic_potential)
 
-        do count_i = 1, real_grid_number
-            !do count_s = 1, boundary_series_number
-            !    gama(count_s) = potential_energy_diff(1, count_s, injection_grid_number(count_s))
-            !end do
-            !alpha_mu = magnetic_flux_density(count_i) * adiabatic_invariant(:, 500) / boundary_temperature_perp
-            !beta = (potential_energy_diff(1, :, count_i) - gama) / boundary_temperature_para
-            !amax_mu = amax(1, :, count_i, 500) / sqrt(boundary_temperature_para)
-            !amin_mu = amin(1, :, count_i, 500) / sqrt(boundary_temperature_para)
-            !print *, (1d0 + erf(amax_mu) - 2d0 * erf(amin_mu)) * exp(- alpha_mu - beta), &
-            !& (1d0 - erf(amin_mu)) * exp(- alpha_mu - beta)
+        call Newton_method_for_boundary_number_density(boundary_number_density_diff, convergence_number_diff, &
+            & injection_grid_number, boundary_number_density)
+
+
+        !------
+        ! print
+        !------
+
+        if ( mod(count_iteration, 10) == 0 ) then
+            do count_i = 1, real_grid_number
             print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
             & charge_density_minus_diff(1, count_i), electrostatic_potential(count_i), count_i, convergence_number_diff(1, count_i)
-        end do
-
-
-        !-------
-        ! finish
-        !-------
-
-        !NaN check
-        do count_h = 1, 3
-            do count_s = 1, boundary_series_number
-                do count_i = 1, real_grid_number
-                    do count_mu = 1, adiabatic_invariant_grid_number
-                        if ( convergence_number_diff(count_h, count_i) /= convergence_number_diff(count_h, count_i) ) then
-                            if ( count_mu == 1 .and. count_s == 1 .and. count_h == 1 ) & !
-                            & print *, "NaN", count_h, count_s, count_i, count_mu
-
-                        else if ( convergence_number_diff(count_h, count_i) == 0d0 ) then
-                            if ( count_mu == 1 .and. count_s == 1 .and. count_h == 1 ) & !
-                            & print *, "0", count_h, count_s, count_i, count_mu
-
-                        end if
-                    end do
-                end do
             end do
-        end do
-
-        print *, count_iteration, convergence_number_sum_min, convergence_number_sum
-
-!        if (count_iteration == 10) then
-!            exit
-!        end if 
+            print *, count_iteration, convergence_number_sum_min, convergence_number_sum
+        end if
 
     end do !count_iteration
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 end program main
