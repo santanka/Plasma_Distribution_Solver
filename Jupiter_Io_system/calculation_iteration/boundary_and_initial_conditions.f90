@@ -11,7 +11,7 @@ module boundary_and_initial_conditions
     !(initial_min_grid_1 < initial_fix_grid < initial_min_grid_2 => fix)
     !(initial_fix_grid <= initial_min_grid_1 or initial_min_grid_2 <= initial_fix_grid => not fix)
 
-    integer, parameter :: initial_min_grid_1 = 42
+    integer, parameter :: initial_min_grid_1 = 80
     integer, parameter :: initial_min_grid_2 = real_grid_number + 1 - initial_min_grid_1
 
     integer, parameter :: initial_grid_ionophere_middle_1 = 15
@@ -36,7 +36,7 @@ module boundary_and_initial_conditions
     ! boundary condition
     !-------------------
 
-    character(len=128) :: boundary_file = '../conditions/boundary_conditions_1.csv'
+    character(len=128), parameter :: boundary_file = '../conditions/boundary_conditions_1.csv'
     integer, parameter :: boundary_file_number = 1  !boundary_file
     integer, parameter :: boundary_series_number = 10
     integer, parameter :: boundary_ionosphere_1_variable_species = 2
@@ -49,6 +49,6 @@ module boundary_and_initial_conditions
     ! result file
     !------------
 
-    character(len = 32) :: result_file_front = '../results/result_number_density' 
+    character(len = 32), parameter :: result_file_front = '../results/result_number_density' 
 
 end module boundary_and_initial_conditions    

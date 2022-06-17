@@ -104,7 +104,7 @@ program main
     !----------------
 
     count_iteration = 0
-    convergence_number_sum_min = 1d0
+    convergence_number_sum_min = 1d1
 
     do  !count_iteration
         count_iteration = count_iteration + 1
@@ -159,14 +159,13 @@ program main
         call make_convergence_number(charge_density_diff, charge_density_plus_diff, charge_density_minus_diff, &
             & charge_density_poisson_diff, convergence_number_diff, convergence_number_sum)
 
-        if ( convergence_number_sum_min > convergence_number_sum ) then
-            convergence_number_sum_min = convergence_number_sum
-        end if
+        if ( convergence_number_sum_min > convergence_number_sum .or. count_iteration == 1E4 &
+            & .or. convergence_number_sum /= convergence_number_sum ) then
 
-        if ( convergence_number_sum_min < 1d-7 .or. count_iteration == 1E4 ) then
             call make_result_file_name(result_file)
             call make_result_file_format(format_character)
             open(50, file = result_file)
+            write(50, "(1PE25.15E3)") convergence_number_sum
             do count_i = 1, real_grid_number
 
                 write(50, format_character) coordinate_FA(count_i), length2planet(count_i), mlat(count_i), &
@@ -184,6 +183,11 @@ program main
                     & particle_mass(count_s), injection_grid_number(count_s)
 
             end do
+            close(50)
+        end if
+
+        if ( convergence_number_sum_min > convergence_number_sum ) then
+            convergence_number_sum_min = convergence_number_sum
         end if
 
         if ( convergence_number_sum_min < 1d-7 ) then
@@ -191,8 +195,14 @@ program main
             exit
         end if
 
-        if ( count_iteration == 1E4 ) then
+        if ( count_iteration == 5E4 ) then
             print *, "finish(not converge)"
+            exit
+        end if
+
+        if ( convergence_number_sum /= convergence_number_sum ) then
+            print *, "finish(error: NaN)"
+            exit
         end if
         
 
@@ -211,11 +221,11 @@ program main
         ! print
         !------
 
-        if ( mod(count_iteration, 10) == 0 ) then
-            do count_i = 1, real_grid_number
-            print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
-            & charge_density_minus_diff(1, count_i), electrostatic_potential(count_i), count_i, convergence_number_diff(1, count_i)
-            end do
+        if ( mod(count_iteration, 100) == 1 ) then
+            !do count_i = 1, real_grid_number
+            !print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
+            !& charge_density_minus_diff(1, count_i), electrostatic_potential(count_i), count_i, convergence_number_diff(1, count_i)
+            !end do
             print *, count_iteration, convergence_number_sum_min, convergence_number_sum
         end if
 

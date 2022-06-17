@@ -2,6 +2,7 @@ subroutine make_adiabatic_invariant(particle_mass, magnetic_flux_density, inject
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
 
@@ -14,10 +15,12 @@ subroutine make_adiabatic_invariant(particle_mass, magnetic_flux_density, inject
     double precision :: max_mu
 
     do count_s = 1, boundary_series_number
-        
-        do count_mu = 1, adiabatic_invariant_grid_number
 
-            max_mu = particle_mass(count_s) * speed_of_light**2d0 / 2d0 / magnetic_flux_density(injection_grid_number(count_s))
+        max_mu = particle_mass(count_s) * speed_of_light**2d0 / 2d0 / magnetic_flux_density(injection_grid_number(count_s))
+
+        !$omp parallel
+        !$omp do
+        do count_mu = 1, adiabatic_invariant_grid_number
 
             if ( count_mu == 1 ) then
                 adiabatic_invariant(count_s, count_mu) = 0d0
@@ -27,6 +30,8 @@ subroutine make_adiabatic_invariant(particle_mass, magnetic_flux_density, inject
             end if
 
         end do  !count_mu
+        !$omp end do
+        !$omp end parallel
 
     end do  !count_s
     
@@ -98,6 +103,7 @@ subroutine make_potential_energy_diff(mlat, length2planet, length2satellite, cha
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -110,6 +116,8 @@ subroutine make_potential_energy_diff(mlat, length2planet, length2satellite, cha
 
     do count_h = 1, 3
         
+        !$omp parallel
+        !$omp do
         do count_i = 1, real_grid_number
 
             !gravity of planet
@@ -131,6 +139,8 @@ subroutine make_potential_energy_diff(mlat, length2planet, length2satellite, cha
                 & + charge_number * electrostatic_potential_diff(count_h, count_i)
         
         end do  !count_i
+        !$omp end do
+        !$omp end parallel
     
     end do  !count_h
     
@@ -143,6 +153,7 @@ subroutine make_potential_plus_Bmu_diff(potential_energy_diff, adiabatic_invaria
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -158,12 +169,16 @@ subroutine make_potential_plus_Bmu_diff(potential_energy_diff, adiabatic_invaria
         
         do count_s = 1, boundary_series_number
 
+            !$omp parallel
+            !$omp do
             do count_i = 1, real_grid_number
                 
                 potential_plus_Bmu_diff(count_h, count_s, count_i, :) = potential_energy_diff(count_h, count_s, count_i) &
                     & + magnetic_flux_density(count_i) * adiabatic_invariant(count_s, :)
 
             end do  !count_i
+            !$omp end do
+            !$omp end parallel
             
         end do  !count_s
 
@@ -177,6 +192,7 @@ subroutine make_amin(potential_plus_Bmu_diff, injection_grid_number, amin)
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -189,6 +205,8 @@ subroutine make_amin(potential_plus_Bmu_diff, injection_grid_number, amin)
 
     do count_s = 1, boundary_series_number
 
+        !$omp parallel private(Emax_grid, count_h, count_mu, count4max)
+        !$omp do
         do count_i = 1, real_grid_number
 
             if ( count_i /= injection_grid_number(count_s) ) then
@@ -239,6 +257,8 @@ subroutine make_amin(potential_plus_Bmu_diff, injection_grid_number, amin)
 
             end if
         end do  !count_i
+        !$omp end do
+        !$omp end parallel
         
     end do  !count_s
 
@@ -251,6 +271,7 @@ subroutine make_alim(potential_plus_Bmu_diff, injection_grid_number, particle_ma
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -266,7 +287,9 @@ subroutine make_alim(potential_plus_Bmu_diff, injection_grid_number, particle_ma
     do count_h = 1, 3
         
         do count_s = 1, boundary_series_number
-            
+
+            !$omp parallel
+            !$omp do
             do count_mu = 1, adiabatic_invariant_grid_number
                 
                 alim(count_h, count_s, :, count_mu) = sqrt(5d-1 * particle_mass(count_s) * speed_of_light**2d0 &
@@ -282,8 +305,10 @@ subroutine make_alim(potential_plus_Bmu_diff, injection_grid_number, particle_ma
                 end do  !count_i
 
             end do  !count_mu
+            !$omp end do
+            !$omp end parallel
 
-        end do  !count_i
+        end do  !count_s
 
     end do  !count_h
     
@@ -295,6 +320,7 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -310,6 +336,8 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
 
     do count_s = 1, boundary_series_number
 
+        !$omp parallel private(count4max, Emax_grid, energy_difference, energy_difference_boundary)
+        !$omp do
         do count_i = 1, real_grid_number
 
             if ( (count_i == 1 .and. injection_grid_number(count_s) /= 1) &
@@ -374,6 +402,8 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
             end if
             
         end do  !count_i
+        !$omp end do
+        !$omp end parallel
 
     end do  !count_s
 
@@ -408,7 +438,7 @@ subroutine make_number_density(boundary_number_density_diff, boundary_temperatur
     do count_h = 1, 3
         
         do count_s = 1, boundary_series_number
-            
+
             do count_i = 1, real_grid_number
                 
                 integral = 0d0
@@ -448,6 +478,7 @@ end subroutine make_number_density
 subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adiabatic_invariant, integral_result)
     use constant_parameter
     use constant_in_the_simulation
+    use omp_lib
 
     implicit none
     
@@ -462,6 +493,8 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
     integral_result = 0d0
     result_halfway = 0d0
 
+    !$omp parallel private(integral_former_x, integral_latter_x, count_x, xmin2xlim, xmin2xmax)
+    !$omp do
     do count_mu = 1, adiabatic_invariant_grid_number
 
         if ( xlim(count_mu) > xmin(count_mu) ) then
@@ -513,7 +546,7 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
 
             end if
 
-
+            
             do count_x = 1, adiabatic_invariant_grid_number - 1
 
                 integral_former_x = exp(- (xmin2xlim(count_x))**2d0 - coefficient4integral(count_mu))
@@ -532,10 +565,13 @@ subroutine calculation_x_mu_integral(xmin, xlim, xmax, coefficient4integral, adi
                 end if
 
             end do  !count_x
+            
         
         end if
         
     end do  !count_mu
+    !$omp end do
+    !$omp end parallel
 
     do count_mu = 2, adiabatic_invariant_grid_number
         
@@ -552,6 +588,7 @@ subroutine cannot_reach_check(number_density_diff, injection_grid_number)
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -562,7 +599,9 @@ subroutine cannot_reach_check(number_density_diff, injection_grid_number)
     integer :: count_h, count_s, count_i
 
     do count_h = 1, 3
-        
+
+        !$omp parallel private(count_i, cannot_reach_point)
+        !$omp do
         do count_s = 1, boundary_series_number
             
             if ( injection_grid_number(count_s) /= real_grid_number ) then
@@ -596,6 +635,8 @@ subroutine cannot_reach_check(number_density_diff, injection_grid_number)
             end if
 
         end do  !count_s
+        !$omp end do
+        !$omp end parallel
 
     end do  !count_h
 
@@ -643,6 +684,7 @@ end subroutine make_charge_density_from_number_density
 subroutine make_charge_density_from_Poisson_eq(electrostatic_potential_diff, diff_coordinate_FA, charge_density_poisson_diff)
     use constant_parameter
     use constant_in_the_simulation
+    use omp_lib
 
     implicit none
     
@@ -652,6 +694,8 @@ subroutine make_charge_density_from_Poisson_eq(electrostatic_potential_diff, dif
 
     integer :: count_i
 
+    !$omp parallel private(count_i)
+    !$omp do
     do count_i = 1, real_grid_number
         
         if ( count_i == 1 .or. count_i == real_grid_number ) then
@@ -673,6 +717,8 @@ subroutine make_charge_density_from_Poisson_eq(electrostatic_potential_diff, dif
         end if
 
     end do  !count_i
+    !$omp end do
+    !$omp end parallel
 
 end subroutine make_charge_density_from_Poisson_eq
 !
@@ -743,6 +789,7 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
     use constant_parameter
     use constant_in_the_simulation
     use boundary_and_initial_conditions
+    use omp_lib
 
     implicit none
     
@@ -762,6 +809,8 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
 
     electrostatic_potential = electrostatic_potential_diff(1, :)
 
+    !$omp parallel private(update)
+    !$omp do
     do count_i = 2, real_grid_number - 1
         
         if ( count_i /= initial_fix_grid .and. (convergence_number_diff(1, count_i) > convergence_number_diff(2, count_i) &
@@ -795,17 +844,19 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
                 electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) &
                     & * sqrt(convergence_number_diff(1, count_i))
             
-            else if ( abs(update) < 5d-1 .and. sqrt(convergence_number_diff(1, count_i)) > 5d0 ) then
+            else if ( abs(update) < 5d0 .and. sqrt(convergence_number_diff(1, count_i)) > 5d0 ) then
                 electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update
 
-            else if ( abs(update) >= 5d-1 .and. sqrt(convergence_number_diff(1, count_i)) > 5d0 ) then
-                electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) * 5d-1
+            else if ( abs(update) >= 5d0 .and. sqrt(convergence_number_diff(1, count_i)) > 5d0 ) then
+                electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) * 5d0
                 
             end if
             
         end if
 
     end do  !count_i
+    !$omp end do
+    !$omp end parallel
 
 
     !--------
@@ -827,6 +878,7 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
     sorting_potential_2 = electrostatic_potential(initial_min_grid_2:real_grid_number-1)
     do count_i = 1, real_grid_number - initial_min_grid_2
 
+        
         if ( sorting_potential_2(count_i) > electrostatic_potential(real_grid_number) ) then
             sorting_potential_2(count_i) = 2d0 * electrostatic_potential(real_grid_number) &
                 & - sorting_potential_2(count_i) 
@@ -875,6 +927,8 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
 
     end if
 
+    !$omp parallel
+    !$omp do
     do count_i = 1, real_grid_number
         
         if ( count_i > 1 .and. count_i <= initial_min_grid_1) then
@@ -894,6 +948,8 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
         end if
 
     end do  !count_i
+    !$omp end do
+    !$omp end parallel
 
 end subroutine Newton_method_for_electrostatic_potential
 !
