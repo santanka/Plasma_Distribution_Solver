@@ -16,7 +16,8 @@ program main
     double precision, dimension(B_grid_number) :: particle_flux_svc, particle_flux_pds, particle_flux_mpds
     double precision, dimension(B_grid_number) :: pressure_perp_svc, pressure_perp_pds, pressure_perp_mpds
     double precision, dimension(B_grid_number) :: pressure_para_svc, pressure_para_pds, pressure_para_mpds
-    !double precision, dimension(B_grid_number) :: magnetic_pressure
+    double precision, dimension(B_grid_number) :: pressure_dynamic_svc, pressure_dynamic_pds, pressure_dynamic_mpds
+    double precision, dimension(B_grid_number) :: pressure_total_svc, pressure_total_pds, pressure_total_mpds
 
     !保存ファイル
     character(len=128) :: file_result = "Jupiter_Io_calculation_result_SVC_PDS_mPDS.csv"
@@ -24,8 +25,9 @@ program main
     !file contents
     !B_ratio(1), mlat_degree(2), number_density_svc(3), number_density_pds(4), number_density_mpds(5), particle_flux_svc(6), 
     !particle_flux_pds(7), particle_flux_mpds(8), pressure_perp_svc(9), pressure_perp_pds(10), pressure_perp_mpds(11),
-    !pressure_para_svc(12), pressure_para_pds(13), pressure_para_mpds(14)
-    90 format(1PE25.15E3, 13(',', 1PE25.15E3))
+    !pressure_para_svc(12), pressure_para_pds(13), pressure_para_mpds(14), pressure_dynamic_svc(15), pressure_dynamic_pds(16), 
+    !pressure_dynamic_mpds(17), pressure_total_svc(18), pressure_total_pds(19), pressure_total_mpds(20)
+    90 format(1PE25.15E3, 19(',', 1PE25.15E3))
 
     
     !calculation - field
@@ -53,8 +55,15 @@ program main
     call make_pressure_para_PDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_para_pds)
     call make_pressure_para_mPDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_para_mpds)
 
-    !calculation - magnetic pressure
-    !call make_magnetic_pressure(B_grid_number, B_ratio, magnetic_pressure)
+    !calculation - pressure dynamic
+    call make_pressure_dynamic_SVC(B_grid_number, B_ratio, pressure_dynamic_svc)
+    call make_pressure_dynamic_PDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_dynamic_pds)
+    call make_pressure_dynamic_mPDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_dynamic_mpds)
+
+    !calculation - pressure total
+    call make_pressure_total_SVC(B_grid_number, B_ratio, pressure_total_svc)
+    call make_pressure_total_PDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_total_pds)
+    call make_pressure_total_mPDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_total_mpds)
 
 
     !file output
@@ -64,7 +73,8 @@ program main
         write(50, 90) B_ratio(file_i), mlat_degree(file_i), number_density_svc(file_i), number_density_pds(file_i), &
             & number_density_mpds(file_i), particle_flux_svc(file_i), particle_flux_pds(file_i), particle_flux_mpds(file_i), &
             & pressure_perp_svc(file_i), pressure_perp_pds(file_i), pressure_perp_mpds(file_i), pressure_para_svc(file_i), &
-            & pressure_para_pds(file_i), pressure_para_mpds(file_i)
+            & pressure_para_pds(file_i), pressure_para_mpds(file_i), pressure_dynamic_svc(file_i), pressure_dynamic_pds(file_i), &
+            & pressure_dynamic_mpds(file_i), pressure_total_svc(file_i), pressure_total_pds(file_i), pressure_total_mpds(file_i)
 
     end do  !file_i
 
@@ -457,16 +467,137 @@ subroutine make_pressure_para_mPDS(B_grid_number, B_ratio, max_velocity_ratio, v
     
 end subroutine make_pressure_para_mPDS
 
-!subroutine make_magnetic_pressure(B_grid_number, B_ratio, magnetic_pressure)
-!    
-!    implicit none
-!    
-!    integer, intent(in) :: B_grid_number
-!    double precision, dimension(B_grid_number), intent(in) :: B_ratio
-!    double precision, dimension(B_grid_number), intent(out) :: magnetic_pressure
-!
-!    double precision, parameter :: magnetic_constant = 1.25663706212d-6
-!
-!    magnetic_pressure = B_ratio**2d0 / 2d0 / magnetic_constant
-!    
-!end subroutine make_magnetic_pressure
+subroutine make_pressure_dynamic_SVC(B_grid_number, B_ratio, pressure_dynamic_svc)
+
+    implicit none
+    
+    integer, intent(in) :: B_grid_number
+    double precision, dimension(B_grid_number), intent(in) :: B_ratio
+    double precision, dimension(B_grid_number), intent(out) :: pressure_dynamic_svc
+
+    double precision, parameter :: pi = 4.d0 * atan(1.d0)
+
+    pressure_dynamic_svc = 1d0 / 2d0 / sqrt(pi) * (B_ratio / B_ratio(B_grid_number))**2d0 &
+        & / (1d0 + sqrt(1d0 - B_ratio / B_ratio(B_grid_number)))
+    
+end subroutine make_pressure_dynamic_SVC
+
+subroutine make_pressure_dynamic_PDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_dynamic_pds)
+
+    implicit none
+    
+    integer, intent(in) :: B_grid_number, velocity_space_grid
+    double precision, dimension(B_grid_number), intent(in) :: B_ratio
+    double precision, intent(in) :: max_velocity_ratio
+    double precision, dimension(B_grid_number), intent(out) :: pressure_dynamic_pds
+
+    double precision, parameter :: pi = 4.d0 * atan(1.d0)
+    integer :: grid_i
+    double precision :: integral
+
+    do grid_i = 1, B_grid_number
+        
+        call zeta_function_for_PDS(max_velocity_ratio, velocity_space_grid, B_ratio(B_grid_number)/B_ratio(grid_i), &
+            & 1d0/B_ratio(grid_i), integral)
+        
+        pressure_dynamic_pds(grid_i) = 2d0 / sqrt(pi) / B_ratio(grid_i)**2d0 &
+            & / (1d0 + sqrt(1d0 - 1d0 / B_ratio(B_grid_number)) - 2d0 * sqrt(1d0 - 1d0 / B_ratio(grid_i))) * integral**2d0
+
+    end do  !grid_i
+    
+end subroutine make_pressure_dynamic_PDS
+
+subroutine make_pressure_dynamic_mPDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_dynamic_mpds)
+
+    implicit none
+    
+    integer, intent(in) :: B_grid_number, velocity_space_grid
+    double precision, dimension(B_grid_number), intent(in) :: B_ratio
+    double precision, intent(in) :: max_velocity_ratio
+    double precision, dimension(B_grid_number), intent(out) :: pressure_dynamic_mpds
+
+    double precision, parameter :: pi = 4.d0 * atan(1.d0)
+    integer :: grid_i
+    double precision :: integral
+
+    do grid_i = 1, B_grid_number
+        
+        call zeta_function_for_PDS(max_velocity_ratio, velocity_space_grid, B_ratio(B_grid_number)/B_ratio(grid_i), &
+            & 1d0/B_ratio(grid_i), integral)
+        
+        pressure_dynamic_mpds(grid_i) = 2d0 / sqrt(pi) / B_ratio(grid_i) &
+            & / (1d0 + sqrt(1d0 - 1d0 / B_ratio(B_grid_number)) - 2d0 * sqrt(1d0 - 1d0 / B_ratio(grid_i))) * integral**2d0
+
+    end do  !grid_i
+    
+end subroutine make_pressure_dynamic_mPDS
+
+
+subroutine make_pressure_total_SVC(B_grid_number, B_ratio, pressure_total_svc)
+
+    implicit none
+    
+    integer, intent(in) :: B_grid_number
+    double precision, dimension(B_grid_number), intent(in) :: B_ratio
+    double precision, dimension(B_grid_number), intent(out) :: pressure_total_svc
+
+    double precision, parameter :: pi = 4.d0 * atan(1.d0)
+
+    pressure_total_svc = 5d-1 * ((1d0 + sqrt(1d0 - B_ratio / B_ratio(B_grid_number)))**2d0 &
+        & + 1d0 / 3d0 / pi * (B_ratio / B_ratio(B_grid_number))**2d0) / (1d0 + sqrt(1d0 - B_ratio / B_ratio(B_grid_number)))
+    
+end subroutine make_pressure_total_SVC
+
+subroutine make_pressure_total_PDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_total_pds)
+
+    implicit none
+    
+    integer, intent(in) :: B_grid_number, velocity_space_grid
+    double precision, dimension(B_grid_number), intent(in) :: B_ratio
+    double precision, intent(in) :: max_velocity_ratio
+    double precision, dimension(B_grid_number), intent(out) :: pressure_total_pds
+
+    double precision, parameter :: pi = 4.d0 * atan(1.d0)
+    integer :: grid_i
+    double precision :: integral, value_of_sqrt
+
+    do grid_i = 1, B_grid_number
+        
+        call zeta_function_for_PDS(max_velocity_ratio, velocity_space_grid, B_ratio(B_grid_number)/B_ratio(grid_i), &
+            & 1d0/B_ratio(grid_i), integral)
+
+        value_of_sqrt = 1d0 + sqrt(1d0 - 1d0 / B_ratio(B_grid_number)) - 2d0 * sqrt(1d0 - 1d0 / B_ratio(grid_i))
+        
+        pressure_total_pds(grid_i) = 5d-1 * (value_of_sqrt**2d0 + 4d0 / 3d0 / pi * (1d0 / B_ratio(grid_i))**2d0 * integral**2d0) &
+            & / value_of_sqrt
+
+    end do  !grid_i
+    
+end subroutine make_pressure_total_PDS
+
+subroutine make_pressure_total_mPDS(B_grid_number, B_ratio, max_velocity_ratio, velocity_space_grid, pressure_total_mpds)
+
+    implicit none
+    
+    integer, intent(in) :: B_grid_number, velocity_space_grid
+    double precision, dimension(B_grid_number), intent(in) :: B_ratio
+    double precision, intent(in) :: max_velocity_ratio
+    double precision, dimension(B_grid_number), intent(out) :: pressure_total_mpds
+
+    double precision, parameter :: pi = 4.d0 * atan(1.d0)
+    integer :: grid_i
+    double precision :: integral, value_of_sqrt
+
+    do grid_i = 1, B_grid_number
+        
+        call zeta_function_for_PDS(max_velocity_ratio, velocity_space_grid, B_ratio(B_grid_number)/B_ratio(grid_i), &
+            & 1d0/B_ratio(grid_i), integral)
+
+        value_of_sqrt = 1d0 + sqrt(1d0 - 1d0 / B_ratio(B_grid_number)) - 2d0 * sqrt(1d0 - 1d0 / B_ratio(grid_i))
+        
+        pressure_total_mpds(grid_i) = 5d-1 * (value_of_sqrt**2d0 + 4d0 / 3d0 / pi * (1d0 / B_ratio(grid_i))**2d0 * integral**2d0) &
+            & / value_of_sqrt * B_ratio(grid_i)
+
+    end do  !grid_i
+    
+end subroutine make_pressure_total_mPDS
