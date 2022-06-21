@@ -61,7 +61,7 @@ module main_variables
     ! counter
     !--------
 
-    integer :: count_iteration, count_h, count_s, count_i, count_mu
+    integer :: count_iteration, count_iteration_timer, count_h, count_s, count_i, count_mu
 
 
     !----------

@@ -739,7 +739,7 @@ subroutine make_convergence_number(charge_density_diff, charge_density_plus_diff
     convergence_number_diff = (charge_density_diff - charge_density_poisson_diff)**2d0
     convergence_number_diff = convergence_number_diff / (- charge_density_minus_diff) / charge_density_plus_diff
     
-    convergence_number_sum = sqrt(sum(convergence_number_diff(1, :)) / real_grid_number)
+    convergence_number_sum = sqrt(sum(convergence_number_diff(1, :)**2d0) / real_grid_number)
    
 end subroutine make_convergence_number
 !
