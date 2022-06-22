@@ -11,10 +11,10 @@ module boundary_and_initial_conditions
     !(initial_min_grid_1 < initial_fix_grid < initial_min_grid_2 => fix)
     !(initial_fix_grid <= initial_min_grid_1 or initial_min_grid_2 <= initial_fix_grid => not fix)
 
-    integer, parameter :: initial_min_grid_1 = 75
+    integer, parameter :: initial_min_grid_1 = 60
     integer, parameter :: initial_min_grid_2 = real_grid_number + 1 - initial_min_grid_1
 
-    integer, parameter :: initial_grid_ionophere_middle_1 = 15
+    integer, parameter :: initial_grid_ionophere_middle_1 = 20
     ! 1 ~ initial_grid_ionophere_middle_1 - 1   initial_electrostatic_potential_ionosphere
     
     integer, parameter :: initial_grid_middle_magnetosphere_1 = 41
