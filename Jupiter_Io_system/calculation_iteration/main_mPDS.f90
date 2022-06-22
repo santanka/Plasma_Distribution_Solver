@@ -191,10 +191,10 @@ program main
             count_iteration_timer = count_iteration
         end if
 
-        if ( convergence_number_sum_min < 1d-6 ) then
-            print *, "finish(converge)"
-            exit
-        end if
+        !if ( convergence_number_sum_min < 1d-6 ) then
+        !    print *, "finish(converge)"
+        !    exit
+        !end if
 
         if ( count_iteration - count_iteration_timer == 5E3 ) then
             print *, "finish(time up)"

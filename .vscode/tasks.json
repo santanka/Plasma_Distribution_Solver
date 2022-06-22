@@ -11,9 +11,9 @@
                 "-g",
                 "-O4",
                 "-o",
-                "-fopenmp",
                 "${fileDirname}/${fileBasenameNoExtension}.out",
-                "${file}"
+                "${file}",
+                "-fopenmp"
             ],
             "group": {
                 "kind": "build",

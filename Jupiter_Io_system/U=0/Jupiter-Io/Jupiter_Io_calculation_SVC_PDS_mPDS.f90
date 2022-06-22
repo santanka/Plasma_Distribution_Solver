@@ -3,7 +3,7 @@ program main
     implicit none
 
     !固定値
-    double precision, parameter :: max_B_ratio = 91.1d0
+    double precision, parameter :: max_B_ratio = 336d0
     double precision, parameter :: max_velocity_ratio = 500
     integer, parameter :: B_grid_number = 1000
 
@@ -156,6 +156,7 @@ double precision function beta_func_differential(mlat)
 end function beta_func_differential
 
 subroutine make_MLAT(B_grid_number, B_ratio, mlat_degree)
+    !$ use omp_lib
 
     implicit none
 
@@ -170,11 +171,15 @@ subroutine make_MLAT(B_grid_number, B_ratio, mlat_degree)
 
     mlat_degree(1) = 0d0
 
+    !$omp parallel private(mlat_initial, mlat_rad)
+    !$omp do
     do grid_i = 2, B_grid_number
         mlat_initial = 1d-5
         call Newton_method(mlat_initial, B_ratio(grid_i), mlat_rad)
         mlat_degree(grid_i) = mlat_rad / pi * 180d0
     end do !grid_i
+    !$omp end do
+    !$omp end parallel
     
 end subroutine make_MLAT
 
