@@ -38,6 +38,7 @@ module main_variables
     double precision, dimension(boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, alim, amax
     double precision, dimension(boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: potential_plus_Bmu
     double precision, dimension(boundary_series_number, real_grid_number) :: particle_flux_density, pressure_perp, pressure_para
+    double precision, dimension(boundary_series_number, real_grid_number) :: temperature_perp, temperature_para
     double precision, dimension(boundary_series_number, real_grid_number) :: parallel_mean_velocity
     double precision, dimension(real_grid_number) :: Alfven_speed
 

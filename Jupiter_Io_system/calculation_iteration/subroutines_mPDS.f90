@@ -398,6 +398,10 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
                             
                         end if
 
+                        if ( amax(count_h, count_s, count_i, count_mu) < amin(count_h, count_s, count_i, count_mu) ) then
+                            amax(count_h, count_s, count_i, count_mu) = amin(count_h, count_s, count_i, count_mu)
+                        end if
+
                     end do  !count_h
                     
                 end do  !count_mu
@@ -534,7 +538,8 @@ subroutine cannot_reach_check(number_density_diff, injection_grid_number)
                 cannot_reach_point = 0
                 do count_i = injection_grid_number(count_s), real_grid_number
 
-                    if( number_density_diff(count_h, count_s, count_i) == 0d0 .and. cannot_reach_point == 0) then
+                    if( number_density_diff(count_h, count_s, count_i) < 1d-5 .and. cannot_reach_point == 0) then
+                        number_density_diff(count_h, count_s, count_i) = 0d0
                         cannot_reach_point = count_i
                     end if
 
@@ -549,7 +554,8 @@ subroutine cannot_reach_check(number_density_diff, injection_grid_number)
                 cannot_reach_point = 0
                 do count_i = injection_grid_number(count_s), 1, -1
 
-                    if( number_density_diff(count_h, count_s, count_i) == 0d0 .and. cannot_reach_point == 0) then
+                    if( number_density_diff(count_h, count_s, count_i) < 1d-5 .and. cannot_reach_point == 0) then
+                        number_density_diff(count_h, count_s, count_i) = 0d0
                         cannot_reach_point = count_i
                     end if
 

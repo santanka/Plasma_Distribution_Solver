@@ -83,15 +83,23 @@ program main
 
     call make_particle_flux_density(boundary_number_density, magnetic_flux_density, injection_grid_number, &
         & boundary_temperature_perp, boundary_temperature_para, particle_mass, adiabatic_invariant, potential_plus_Bmu, alim, &
-        & amax, particle_flux_density)
+        & amax, number_density, particle_flux_density, parallel_mean_velocity)
 
-    !次は流速
+    call make_pressure_perpendicular(boundary_number_density, boundary_temperature_perp, boundary_temperature_para, &
+        & injection_grid_number, magnetic_flux_density, adiabatic_invariant, number_density, amin, alim, amax, pressure_perp, &
+        & temperature_perp)
+    
+    call make_pressure_parallel(boundary_number_density, boundary_temperature_perp, boundary_temperature_para, &
+        & injection_grid_number, magnetic_flux_density, adiabatic_invariant, potential_plus_Bmu, particle_mass, number_density, &
+        & parallel_mean_velocity, amin, alim, amax, pressure_para, temperature_para)
+
+    
+
 
 
     do count_i = 1, real_grid_number
 
-        print *, particle_flux_density(:, count_i), particle_flux_density(:, count_i)/number_density(:, count_i)
-        !, (alim(:, count_i, 1)-amax(:, count_i, 1))/sqrt(boundary_temperature_para)
+        print *, number_density(:, count_i), temperature_para(:, count_i)/elementary_charge
         
     end do
 
