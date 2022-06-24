@@ -39,8 +39,10 @@ module main_variables
     double precision, dimension(boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: potential_plus_Bmu
     double precision, dimension(boundary_series_number, real_grid_number) :: particle_flux_density, pressure_perp, pressure_para
     double precision, dimension(boundary_series_number, real_grid_number) :: temperature_perp, temperature_para
-    double precision, dimension(boundary_series_number, real_grid_number) :: parallel_mean_velocity
-    double precision, dimension(real_grid_number) :: Alfven_speed
+    double precision, dimension(boundary_series_number, real_grid_number) :: parallel_mean_velocity, pressure_dynamic
+    double precision, dimension(real_grid_number) :: Alfven_speed, Alfven_speed_per_lightspeed
+    double precision, dimension(real_grid_number) :: electron_inertial_length, ion_inertial_length
+    double precision, dimension(real_grid_number) :: ion_Larmor_radius, ion_acoustic_radius, electron_Larmor_radius
 
 
     !--------
@@ -48,6 +50,13 @@ module main_variables
     !--------
 
     integer :: count_s, count_i
+
+
+    !------------
+    ! file format
+    !------------
+
+    character(len = 180) :: format_character
 
     
 end module main_variables

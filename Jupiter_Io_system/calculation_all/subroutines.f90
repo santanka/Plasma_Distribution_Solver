@@ -723,3 +723,159 @@ subroutine calculation_integral_for_parallel_pressure(xmin, xlim, xmax, y_mu, co
     end do  !count_y
 
 end subroutine calculation_integral_for_parallel_pressure
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_pressure_dynamic(number_density, parallel_mean_velocity, particle_mass, pressure_dynamic)
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+
+    implicit none
+    
+    double precision, dimension(boundary_series_number, real_grid_number), intent(in) :: number_density, parallel_mean_velocity
+    double precision, dimension(boundary_series_number), intent(in) :: particle_mass
+    double precision, dimension(boundary_series_number, real_grid_number), intent(out) :: pressure_dynamic
+
+    integer :: count_s
+
+    do count_s = 1, boundary_series_number
+        
+        pressure_dynamic(count_s, :) = 5d-1 * number_density(count_s, :) * particle_mass(count_s) &
+            & * parallel_mean_velocity(count_s, :)**2d0
+
+    end do  !count_s
+
+    
+end subroutine make_pressure_dynamic
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_Alfven_speed(magnetic_flux_density, particle_mass, number_density, Alfven_speed, Alfven_speed_per_lightspeed)
+    use constant_parameter
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+
+    implicit none
+    
+    double precision, dimension(real_grid_number), intent(in) :: magnetic_flux_density
+    double precision, dimension(boundary_series_number), intent(in) :: particle_mass
+    double precision, dimension(boundary_series_number, real_grid_number), intent(in) :: number_density
+    double precision, dimension(real_grid_number), intent(out) :: Alfven_speed, Alfven_speed_per_lightspeed
+
+    double precision, dimension(real_grid_number) :: mass_density
+    integer :: count_i
+
+    do count_i = 1, real_grid_number
+        
+        mass_density(count_i) = sum(particle_mass * number_density(:, count_i))
+
+    end do  !count_i
+
+    Alfven_speed_per_lightspeed = magnetic_flux_density / sqrt(magnetic_flux_density**2d0 + mass_density / electric_constant)
+    Alfven_speed = Alfven_speed_per_lightspeed * speed_of_light
+    
+end subroutine make_Alfven_speed
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_inertial_length(charge_number, particle_mass, number_density, ion_inertial_length, electron_inertial_length)
+    use constant_parameter
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+
+    implicit none
+
+    double precision, dimension(boundary_series_number), intent(in) :: charge_number, particle_mass
+    double precision, dimension(boundary_series_number, real_grid_number), intent(in) :: number_density
+    double precision, dimension(real_grid_number), intent(out) :: ion_inertial_length, electron_inertial_length
+
+    integer :: count_s
+    double precision, dimension(real_grid_number) :: charge_density_ion, mass_density_ion, number_density_electron
+
+    charge_density_ion = 0d0
+    mass_density_ion = 0d0
+    number_density_electron = 0d0
+
+    do count_s = 1, boundary_series_number
+        
+        if ( charge_number(count_s) > 0d0 ) then
+            charge_density_ion = charge_density_ion + charge_number(count_s) * number_density(count_s, :)
+            mass_density_ion = mass_density_ion + particle_mass(count_s) * number_density(count_s, :)
+
+        else if ( charge_number(count_s) < 0d0 ) then
+            number_density_electron = number_density_electron + number_density(count_s, :)
+
+        end if
+
+    end do  !count_s
+
+    ion_inertial_length = sqrt(mass_density_ion / magnetic_constant) / charge_density_ion
+    electron_inertial_length = sqrt(electron_mass / magnetic_constant / number_density_electron) / elementary_charge
+    
+end subroutine make_inertial_length
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_Larmor_radius(magnetic_flux_density, number_density, pressure_perp, charge_number, particle_mass, &
+    & ion_Larmor_radius, ion_acoustic_radius, electron_Larmor_radius)
+    use constant_parameter
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+
+    implicit none
+
+    double precision, dimension(real_grid_number), intent(in) :: magnetic_flux_density
+    double precision, dimension(boundary_series_number), intent(in) :: charge_number, particle_mass
+    double precision, dimension(boundary_series_number, real_grid_number), intent(in) :: number_density, pressure_perp
+    double precision, dimension(real_grid_number), intent(out) :: ion_Larmor_radius, ion_acoustic_radius, electron_Larmor_radius
+
+    integer :: count_s
+    double precision, dimension(real_grid_number) :: pressure_perp_ion, pressure_perp_electron, mass_density_ion
+    double precision, dimension(real_grid_number) :: number_density_electron, number_density_ion, charge_density_ion
+
+    pressure_perp_ion = 0d0
+    pressure_perp_electron = 0d0
+    mass_density_ion = 0d0
+    number_density_ion = 0d0
+    number_density_electron = 0d0
+    charge_density_ion = 0d0
+
+    do count_s = 1, boundary_series_number
+        
+        if ( charge_number(count_s) > 0d0 ) then
+            pressure_perp_ion = pressure_perp_ion + pressure_perp(count_s, :)
+            mass_density_ion = mass_density_ion + particle_mass(count_s) * number_density(count_s, :)
+            number_density_ion = number_density_ion + number_density(count_s, :)
+            charge_density_ion = charge_density_ion + charge_number(count_s) * number_density (count_s, :)
+
+        else if ( charge_number(count_s) < 0d0 ) then
+            pressure_perp_electron = pressure_perp_electron + pressure_perp(count_s, :)
+            number_density_electron = number_density_electron + number_density(count_s, :)
+
+        end if
+
+    end do  !count_s
+
+    ion_Larmor_radius = sqrt(2d0 * pressure_perp_ion * mass_density_ion) / magnetic_flux_density / charge_density_ion
+    ion_acoustic_radius = sqrt(2d0 * number_density_ion / number_density_electron * mass_density_ion * pressure_perp_electron) &
+        & / magnetic_flux_density / charge_density_ion
+    electron_Larmor_radius = sqrt(2d0 * pressure_perp_electron * number_density_electron * electron_mass) / magnetic_flux_density &
+        & / number_density_electron / elementary_charge
+
+end subroutine make_Larmor_radius
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine make_result_file_format(format_character)
+    use reference_results_setting
+
+    implicit none
+    
+    character(len = 34), intent(out) ::  format_character
+    character(len = 3) :: series_number
+
+    write(series_number, "(I3)") 8 * boundary_series_number + 16
+
+    format_character = "(1PE25.15E3, " // series_number // "(',', 1PE25.15E3))"
+
+end subroutine make_result_file_format

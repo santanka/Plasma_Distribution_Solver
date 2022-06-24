@@ -50,13 +50,6 @@ program main
 
     call make_adiabatic_invariant(particle_mass, magnetic_flux_density, injection_grid_number, adiabatic_invariant)
 
-    !do count_i = 1, adiabatic_invariant_grid_number
-!
-    !    print *, exp(- magnetic_flux_density(count_i)*adiabatic_invariant(:, count_i)/boundary_temperature_perp)
-    !    
-    !end do
-
-
 
     !----------
     ! potential
@@ -93,17 +86,35 @@ program main
         & injection_grid_number, magnetic_flux_density, adiabatic_invariant, potential_plus_Bmu, particle_mass, number_density, &
         & parallel_mean_velocity, amin, alim, amax, pressure_para, temperature_para)
 
-    
+    call make_pressure_dynamic(number_density, parallel_mean_velocity, particle_mass, pressure_dynamic)
+
+    call make_Alfven_speed(magnetic_flux_density, particle_mass, number_density, Alfven_speed, Alfven_speed_per_lightspeed)
+
+    call make_inertial_length(charge_number, particle_mass, number_density, ion_inertial_length, electron_inertial_length)
+
+    call make_Larmor_radius(magnetic_flux_density, number_density, pressure_perp, charge_number, particle_mass, &
+        & ion_Larmor_radius, ion_acoustic_radius, electron_Larmor_radius)
 
 
+    !------------
+    ! data output
+    !------------
 
+    call make_result_file_format(format_character)
+    print *, format_character
+    open(30, file = result_file)
     do count_i = 1, real_grid_number
-
-        print *, number_density(:, count_i), temperature_para(:, count_i)/elementary_charge
         
-    end do
+        write(30, format_character) coordinate_FA(count_i), length2planet(count_i), mlat_rad(count_i), mlat_degree(count_i), &
+            & magnetic_flux_density(count_i), initial_electrostatic_potential(count_i), electrostatic_potential(count_i), &
+            & number_density(:, count_i), charge_density(count_i), charge_density_poisson(count_i), convergence_number(count_i), &
+            & particle_flux_density(:, count_i), parallel_mean_velocity(:, count_i), pressure_perp(:, count_i), &
+            & pressure_para(:, count_i), pressure_dynamic(:, count_i), temperature_perp(:, count_i), temperature_para(:, count_i), &
+            & Alfven_speed(count_i), Alfven_speed_per_lightspeed(count_i), ion_inertial_length(count_i), &
+            & electron_inertial_length(count_i), ion_Larmor_radius(count_i), ion_acoustic_radius(count_i), &
+            & electron_Larmor_radius(count_i)
 
-
-
+    end do  !count_i
+    close(30)
     
 end program main
