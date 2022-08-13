@@ -69,22 +69,38 @@ program main
     call make_alim(particle_mass, amin, alim)
     call make_amax(potential_plus_Bmu, injection_grid_number, particle_mass, amin, amax)
 
+    print *, 'make accessibility'
+
 
     !------------
     ! calculation
     !------------
 
+    call make_number_density(boundary_number_density, boundary_temperature_perp, boundary_temperature_para, &
+        & magnetic_flux_density, adiabatic_invariant, injection_grid_number, amin, alim, amax, &
+        & number_density)
+
+    call cannot_reach_check(number_density, injection_grid_number)
+
+    print *, 'make number density'
+
     call make_particle_flux_density(boundary_number_density, magnetic_flux_density, injection_grid_number, &
         & boundary_temperature_perp, boundary_temperature_para, particle_mass, adiabatic_invariant, potential_plus_Bmu, alim, &
         & amax, number_density, particle_flux_density, parallel_mean_velocity)
 
+    print *, 'make particle flux density'
+
     call make_pressure_perpendicular(boundary_number_density, boundary_temperature_perp, boundary_temperature_para, &
         & injection_grid_number, magnetic_flux_density, adiabatic_invariant, number_density, amin, alim, amax, pressure_perp, &
         & temperature_perp)
+
+    print *, 'make pressure perpendicular'
     
     call make_pressure_parallel(boundary_number_density, boundary_temperature_perp, boundary_temperature_para, &
         & injection_grid_number, magnetic_flux_density, adiabatic_invariant, potential_plus_Bmu, particle_mass, number_density, &
         & parallel_mean_velocity, amin, alim, amax, pressure_para, temperature_para)
+
+    print *, 'make pressure parallel'
 
     call make_pressure_dynamic(number_density, parallel_mean_velocity, particle_mass, pressure_dynamic)
 
@@ -94,6 +110,9 @@ program main
 
     call make_Larmor_radius(magnetic_flux_density, number_density, pressure_perp, charge_number, particle_mass, &
         & ion_Larmor_radius, ion_acoustic_radius, electron_Larmor_radius)
+
+    call make_current_density(charge_number, particle_flux_density, current_density)
+    
 
 
     !------------
@@ -112,7 +131,7 @@ program main
             & pressure_para(:, count_i), pressure_dynamic(:, count_i), temperature_perp(:, count_i), temperature_para(:, count_i), &
             & Alfven_speed(count_i), Alfven_speed_per_lightspeed(count_i), ion_inertial_length(count_i), &
             & electron_inertial_length(count_i), ion_Larmor_radius(count_i), ion_acoustic_radius(count_i), &
-            & electron_Larmor_radius(count_i)
+            & electron_Larmor_radius(count_i), current_density(count_i)
 
     end do  !count_i
     close(30)

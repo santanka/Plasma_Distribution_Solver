@@ -6,7 +6,7 @@ module reference_results_setting
     ! reference results file
     !-----------------------
 
-    character(len=59), parameter :: reference_file = '../results/result_number_density_020_020_BC_001_min_075.csv'
+    character(len=59), parameter :: reference_file = '../results/result_number_density_027_050_BC_001_min_088.csv'
     integer, parameter :: boundary_series_number = 10
 
 
@@ -25,7 +25,7 @@ module reference_results_setting
     ! pressure_perp(3*bsn+11:4*bsn+10), pressure_para(4*bsn+11:5*bsn+10), pressure_dynamic(5*bsn+11:6*bsn+10), 
     ! temperature_perp(6*bsn+11:7*bsn+10), temperature_para(7*bsn+11:8*bsn+10), Alfven_speed(8*bsn+11), 
     ! Alfven_speed_per_lightspeed(8*bsn+12), ion_inertial_length(8*bsn+13), electron_inertial_length(8*bsn+14),
-    ! ion_Larmor_radius(8*bsn+15), ion_acoustic_radius(8*bsn+16), electron_Larmor_radius(8*bsn+17)
+    ! ion_Larmor_radius(8*bsn+15), ion_acoustic_radius(8*bsn+16), electron_Larmor_radius(8*bsn+17), current_density(8*bsn+18)
 
 
 end module reference_results_setting

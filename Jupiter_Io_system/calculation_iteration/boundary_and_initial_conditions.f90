@@ -11,13 +11,13 @@ module boundary_and_initial_conditions
     !(initial_min_grid_1 < initial_fix_grid < initial_min_grid_2 => fix)
     !(initial_fix_grid <= initial_min_grid_1 or initial_min_grid_2 <= initial_fix_grid => not fix)
 
-    integer, parameter :: initial_min_grid_1 = 60
+    integer, parameter :: initial_min_grid_1 = 80
     integer, parameter :: initial_min_grid_2 = real_grid_number + 1 - initial_min_grid_1
 
-    integer, parameter :: initial_grid_ionophere_middle_1 = 20
+    integer, parameter :: initial_grid_ionophere_middle_1 = 15
     ! 1 ~ initial_grid_ionophere_middle_1 - 1   initial_electrostatic_potential_ionosphere
     
-    integer, parameter :: initial_grid_middle_magnetosphere_1 = 41
+    integer, parameter :: initial_grid_middle_magnetosphere_1 = 15
     ! initial_grid_ionosphere_middle_1 ~ initial_grid_middle_magnetosphere_1 - 1    initial_electrostatic_potential_middle
 
     integer, parameter :: initial_grid_middle_magnetosphere_2 = real_grid_number + 2 - initial_grid_middle_magnetosphere_1
@@ -36,8 +36,8 @@ module boundary_and_initial_conditions
     ! boundary condition
     !-------------------
 
-    character(len=128), parameter :: boundary_file = '../conditions/boundary_conditions_1.csv'
-    integer, parameter :: boundary_file_number = 1  !boundary_file
+    character(len=128), parameter :: boundary_file = '../conditions/boundary_conditions_4.csv'
+    integer, parameter :: boundary_file_number = 4  !boundary_file
     integer, parameter :: boundary_series_number = 10
     integer, parameter :: boundary_ionosphere_1_variable_species = 2
     integer, parameter :: boundary_ionosphere_2_variable_species = 4

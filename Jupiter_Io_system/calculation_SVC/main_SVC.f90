@@ -81,7 +81,7 @@ program main
     read(30, *)
     do count_s = 1, boundary_series_number
 
-        read(30, *) dummy, boundary_number_density(count_s), boundary_temperature_perp(count_s), &
+        read(30, *) dummy, initial_boundary_number_density(count_s), boundary_temperature_perp(count_s), &
             & boundary_temperature_para(count_s), charge_number(count_s), particle_mass(count_s), injection_grid_number(count_s)
     
     end do  !count_s
@@ -90,13 +90,15 @@ program main
     charge_number = charge_number * elementary_charge
     boundary_temperature_perp = boundary_temperature_perp * elementary_charge
     boundary_temperature_para = boundary_temperature_para * elementary_charge
+    boundary_number_density = initial_boundary_number_density
 
 
     !------------------------
     ! 1st adiabatic invariant
     !------------------------
 
-    call make_adiabatic_invariant(particle_mass, magnetic_flux_density, injection_grid_number, adiabatic_invariant)
+    call make_adiabatic_invariant(particle_mass, magnetic_flux_density, injection_grid_number, adiabatic_invariant, &
+        & boundary_temperature_perp)
 
 
     !----------------
@@ -104,6 +106,7 @@ program main
     !----------------
 
     count_iteration = 0
+    count_iteration_timer = 1
     convergence_number_sum_min = 1d1
 
     do  !count_iteration
@@ -131,9 +134,9 @@ program main
         
         call make_amin(potential_plus_Bmu_diff, injection_grid_number, amin)
 
-        call make_alim(potential_plus_Bmu_diff, injection_grid_number, particle_mass, amin, alim)
+        call make_alim(potential_plus_Bmu_diff, injection_grid_number, particle_mass, amin, alim, boundary_temperature_para)
 
-        call make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_mass, amin, amax)
+        call make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_mass, amin, amax, boundary_temperature_para)
 
 
         !--------
@@ -159,8 +162,7 @@ program main
         call make_convergence_number(charge_density_diff, charge_density_plus_diff, charge_density_minus_diff, &
             & charge_density_poisson_diff, convergence_number_diff, convergence_number_sum)
 
-        if ( convergence_number_sum_min > convergence_number_sum .or. count_iteration == 1E4 &
-            & .or. convergence_number_sum /= convergence_number_sum ) then
+        if ( convergence_number_sum_min > convergence_number_sum .or. convergence_number_sum /= convergence_number_sum ) then
 
             call make_result_file_name(result_file)
             call make_result_file_format(format_character)
@@ -186,19 +188,21 @@ program main
             close(50)
         end if
 
-        if ( convergence_number_sum_min > convergence_number_sum ) then
+        if ( convergence_number_sum_min > convergence_number_sum &
+            & .and. (convergence_number_sum_min - convergence_number_sum) > convergence_number_sum_min * 1d-3) then
             convergence_number_sum_min = convergence_number_sum
+            count_iteration_timer = count_iteration
         end if
 
-        if ( convergence_number_sum_min < 1d-7 ) then
-            print *, "finish(converge)"
-            exit
-        end if
+        !if ( convergence_number_sum_min < 1d-6 ) then
+        !    print *, "finish(converge)"
+        !    exit
+        !end if
 
-        if ( count_iteration == 5E4 ) then
-            print *, "finish(not converge)"
-            exit
-        end if
+        !if ( count_iteration - count_iteration_timer == 5E3 ) then
+        !    print *, "finish(time up)"
+        !    exit
+        !end if
 
         if ( convergence_number_sum /= convergence_number_sum ) then
             print *, "finish(error: NaN)"
@@ -216,18 +220,28 @@ program main
         call Newton_method_for_boundary_number_density(boundary_number_density_diff, convergence_number_diff, &
             & injection_grid_number, boundary_number_density)
 
+!        do count_s = 1, boundary_series_number
+!        
+!            if ( boundary_number_density(count_s) / initial_boundary_number_density(count_s) > 1.25d0 &
+!                & .or. boundary_number_density(count_s) / initial_boundary_number_density(count_s) < 8d-1) then
+!                print *, "finish(error: boundary number density)", count_s, boundary_number_density(count_s), &
+!                    & initial_boundary_number_density(count_s)
+!                stop
+!            end if
+!
+!        end do  !count_s
 
         !------
         ! print
         !------
 
-        if ( mod(count_iteration, 100) == 1 ) then
-            !do count_i = 1, real_grid_number
-            !print *, number_density_diff(1, :, count_i), charge_density_diff(1, count_i), charge_density_plus_diff(1, count_i), &
-            !& charge_density_minus_diff(1, count_i), electrostatic_potential(count_i), count_i, convergence_number_diff(1, count_i)
-            !end do
-            print *, count_iteration, convergence_number_sum_min, convergence_number_sum
+        if ( mod(count_iteration, 10) == 1 ) then
+            print *, count_iteration, count_iteration_timer, convergence_number_sum_min, convergence_number_sum, &
+                & electrostatic_potential(27), electrostatic_potential(28), electrostatic_potential(29), &
+                & electrostatic_potential(30), electrostatic_potential(31), electrostatic_potential(32), &
+                & minval(charge_density_plus_diff), minval(abs(charge_density_minus_diff)), maxval(electrostatic_potential)
         end if
+
 
     end do !count_iteration
 

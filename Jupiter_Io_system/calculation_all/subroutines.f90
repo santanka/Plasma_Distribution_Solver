@@ -315,6 +315,147 @@ end subroutine make_amax
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
+subroutine make_number_density(boundary_number_density, boundary_temperature_perp, boundary_temperature_para, &
+    & magnetic_flux_density, adiabatic_invariant, injection_grid_number, amin, alim, amax, &
+    & number_density)
+    use constant_parameter
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+    !$use omp_lib
+
+    implicit none
+    
+    double precision, dimension(boundary_series_number), intent(in) :: boundary_number_density
+    double precision, dimension(boundary_series_number), intent(in) :: boundary_temperature_perp, boundary_temperature_para
+    double precision, dimension(real_grid_number), intent(in) :: magnetic_flux_density
+    double precision, dimension(boundary_series_number, adiabatic_invariant_grid_number), intent(in) :: adiabatic_invariant
+    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
+    double precision, dimension(boundary_series_number, real_grid_number, adiabatic_invariant_grid_number) :: amin, alim, amax
+    double precision, dimension(boundary_series_number, real_grid_number), intent(out) :: number_density
+
+    integer :: count_s, count_i, injection_grid
+    double precision :: integral, sqrt_temperature_para
+    double precision, dimension(adiabatic_invariant_grid_number) :: xmin, xlim, xmax, coefficient4integral
+        
+    do count_s = 1, boundary_series_number
+
+        !$omp parallel private(integral, sqrt_temperature_para, xmin, xlim, xmax, injection_grid, coefficient4integral)
+        !$omp do
+        do count_i = 1, real_grid_number
+            
+            integral = 0d0
+            sqrt_temperature_para = sqrt(boundary_temperature_para(count_s))
+            
+            xmin = amin(count_s, count_i, :) / sqrt_temperature_para
+            xlim = alim(count_s, count_i, :) / sqrt_temperature_para
+            xmax = amax(count_s, count_i, :) / sqrt_temperature_para
+
+            injection_grid = injection_grid_number(count_s)
+
+            coefficient4integral = magnetic_flux_density(injection_grid) * adiabatic_invariant(count_s, :) &
+                & / boundary_temperature_perp(count_s)
+
+            call calculation_exp_erf(xmin, xlim, xmax, coefficient4integral, adiabatic_invariant(count_s, :), integral)
+
+            number_density(count_s, count_i) = boundary_number_density(count_s) &
+                & * magnetic_flux_density(count_i) / boundary_temperature_perp(count_s) / 2d0 * integral
+
+        end do  !count_i
+        !$omp end do
+        !$omp end parallel
+
+    end do  !count_s
+    
+end subroutine make_number_density
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine calculation_exp_erf(xmin, xlim, xmax, coefficient4integral, adiabatic_invariant, integral_result)
+    use constant_parameter
+    use constant_in_the_simulation
+
+    implicit none
+    
+    double precision, dimension(adiabatic_invariant_grid_number), intent(in) :: coefficient4integral, xmin, xlim, xmax
+    double precision, dimension(adiabatic_invariant_grid_number), intent(in) :: adiabatic_invariant
+    double precision, intent(out) :: integral_result
+
+    integer :: count_mu
+    double precision, dimension(adiabatic_invariant_grid_number) :: exp_erf
+
+    integral_result = 0d0
+
+    exp_erf = exp(- coefficient4integral) * (erf(xlim) + erf(xmax) - 2d0 * erf(xmin))
+
+    do count_mu = 2, adiabatic_invariant_grid_number
+        
+        integral_result = integral_result + (exp_erf(count_mu - 1) + exp_erf(count_mu)) / 2d0 &
+            & * (adiabatic_invariant(count_mu) - adiabatic_invariant(count_mu - 1))
+
+    end do  !count_mu
+
+end subroutine calculation_exp_erf
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
+subroutine cannot_reach_check(number_density, injection_grid_number)
+    use constant_parameter
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+    !$use omp_lib
+
+    implicit none
+    
+    double precision, dimension(boundary_series_number, real_grid_number), intent(inout) :: number_density
+    integer, dimension(boundary_series_number), intent(in) :: injection_grid_number
+
+    integer :: cannot_reach_point
+    integer :: count_s, count_i
+
+    !$omp parallel private(count_i, cannot_reach_point)
+    !$omp do
+    do count_s = 1, boundary_series_number
+            
+        if ( injection_grid_number(count_s) /= real_grid_number ) then
+            cannot_reach_point = 0
+            do count_i = injection_grid_number(count_s), real_grid_number
+
+                if( number_density(count_s, count_i) < 1d-5 .and. cannot_reach_point == 0) then
+                    number_density(count_s, count_i) = 0d0
+                    cannot_reach_point = count_i
+                end if
+
+                if ( cannot_reach_point /= 0 .and. count_i >= cannot_reach_point ) then
+                    number_density(count_s, count_i) = 0d0
+                end if
+                    
+            end do  !count_i
+        end if
+
+        if ( injection_grid_number(count_s) /= 1 ) then
+            cannot_reach_point = 0
+            do count_i = injection_grid_number(count_s), 1, -1
+
+                if( number_density(count_s, count_i) < 1d-5 .and. cannot_reach_point == 0) then
+                    number_density(count_s, count_i) = 0d0
+                    cannot_reach_point = count_i
+                end if
+
+                if ( cannot_reach_point /= 0 .and. count_i <= cannot_reach_point ) then
+                    number_density(count_s, count_i) = 0d0
+                end if
+                    
+            end do  !count_i
+        end if
+
+    end do  !count_s
+    !$omp end do
+    !$omp end parallel
+
+end subroutine cannot_reach_check
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
 subroutine make_particle_flux_density(boundary_number_density, magnetic_flux_density, injection_grid_number, &
     & boundary_temperature_perp, boundary_temperature_para, particle_mass, adiabatic_invariant, potential_plus_Bmu, &
     & alim, amax, number_density, particle_flux_density, parallel_mean_velocity)
@@ -595,7 +736,7 @@ subroutine make_pressure_parallel(boundary_number_density, boundary_temperature_
                     & / boundary_temperature_para(count_s)
 
                 coefficient_2 = sqrt(particle_mass(count_s) / 2d0 / boundary_temperature_para(count_s)) &
-                    & * parallel_mean_velocity(count_s, count_i)
+                    & * abs(parallel_mean_velocity(count_s, count_i))
 
                 call calculation_integral_for_parallel_pressure(xmin, xlim, xmax, y_mu, coefficient_1, coefficient_2, integral)
 
@@ -866,6 +1007,30 @@ end subroutine make_Larmor_radius
 !
 !-----------------------------------------------------------------------------------------------------------------------------------
 !
+subroutine make_current_density(charge_number, particle_flux_density, current_density)
+    use constant_in_the_simulation
+    use reference_results_setting, only: boundary_series_number
+
+    implicit none
+    
+    double precision, dimension(boundary_series_number), intent(in) :: charge_number
+    double precision, dimension(boundary_series_number, real_grid_number), intent(in) :: particle_flux_density
+    double precision, dimension(real_grid_number), intent(out) :: current_density
+    
+    integer :: count_s
+
+    current_density = 0d0
+
+    do count_s = 1, boundary_series_number
+        
+        current_density = current_density + charge_number(count_s) * particle_flux_density(count_s, :)
+
+    end do  !count_s
+
+end subroutine make_current_density
+!
+!-----------------------------------------------------------------------------------------------------------------------------------
+!
 subroutine make_result_file_format(format_character)
     use reference_results_setting
 
@@ -874,7 +1039,7 @@ subroutine make_result_file_format(format_character)
     character(len = 34), intent(out) ::  format_character
     character(len = 3) :: series_number
 
-    write(series_number, "(I3)") 8 * boundary_series_number + 16
+    write(series_number, "(I3)") 8 * boundary_series_number + 17
 
     format_character = "(1PE25.15E3, " // series_number // "(',', 1PE25.15E3))"
 

@@ -16,7 +16,7 @@ subroutine make_adiabatic_invariant(particle_mass, magnetic_flux_density, inject
 
     do count_s = 1, boundary_series_number
 
-        max_mu = particle_mass(count_s) * speed_of_light**2d0 / 2d0 / magnetic_flux_density(injection_grid_number(count_s))
+        max_mu = particle_mass(count_s) * (alpha*speed_of_light)**2d0 / 2d0 / magnetic_flux_density(injection_grid_number(count_s))
 
         !$omp parallel
         !$omp do
@@ -293,7 +293,7 @@ subroutine make_alim(particle_mass, amin, alim)
             !$omp do
             do count_mu = 1, adiabatic_invariant_grid_number
                 
-                alim(count_h, count_s, :, count_mu) = sqrt(5d-1 * particle_mass(count_s)) * speed_of_light
+                alim(count_h, count_s, :, count_mu) = sqrt(5d-1 * particle_mass(count_s)) * alpha * speed_of_light
 
                 do count_i = 1, real_grid_number
 
@@ -345,7 +345,7 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
 
             else if ( count_i == injection_grid_number(count_s) .and. injection_grid_number(count_s) /= 1 &
                 & .and. injection_grid_number(count_s) /= real_grid_number ) then
-                amax(:, count_s, count_i, :) = sqrt(particle_mass(count_s) / 2d0) * speed_of_light
+                amax(:, count_s, count_i, :) = sqrt(particle_mass(count_s) / 2d0) * alpha * speed_of_light
             
             else
                 do count_mu = 1, adiabatic_invariant_grid_number
@@ -388,11 +388,12 @@ subroutine make_amax(potential_plus_Bmu_diff, injection_grid_number, particle_ma
                             amax(count_h, count_s, count_i, count_mu) = amin(count_h, count_s, count_i, count_mu)
 
                         else
-                            if ( energy_difference < 5d-1 * particle_mass(count_s) * speed_of_light**2d0 ) then
+                            if ( energy_difference < 5d-1 * particle_mass(count_s) * (alpha * speed_of_light)**2d0 ) then
                                 amax(count_h, count_s, count_i, count_mu) = sqrt(energy_difference)
 
                             else
-                                amax(count_h, count_s, count_i, count_mu) = sqrt(5d-1 * particle_mass(count_s)) * speed_of_light
+                                amax(count_h, count_s, count_i, count_mu) = sqrt(5d-1 * particle_mass(count_s)) &
+                                    & * alpha * speed_of_light
 
                             end if
                             
@@ -684,15 +685,17 @@ subroutine make_result_file_name(result_file)
 
     implicit none
     
-    character(len = 59), intent(out) ::  result_file
+    character(len = 69), intent(out) ::  result_file
     character(len = 3) :: grid_front, grid_back, file_number, min_grid
+    character(len = 3) :: alpha_str
 
     write(grid_front, "(I3.3)") initial_grid_ionophere_middle_1
     write(grid_back, "(I3.3)") initial_grid_middle_magnetosphere_1
     write(file_number, "(I3.3)") boundary_file_number
     write(min_grid, "(I3.3)") initial_min_grid_1
+    write(alpha_str, "(F3.1)") alpha
 
-    result_file = result_file_front // "_" // grid_front // "_" // grid_back // "_BC_" // file_number &
+    result_file = result_file_front // "_alpha_" // alpha_str // "_" // grid_front // "_" // grid_back // "_BC_" // file_number &
         & // "_min_" // min_grid //".csv"
     
 end subroutine make_result_file_name
@@ -746,7 +749,8 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
     do count_i = 2, real_grid_number - 1
         
         if ( count_i /= initial_fix_grid .and. (convergence_number_diff(1, count_i) > convergence_number_diff(2, count_i) &
-            & .or. convergence_number_diff(1, count_i) > convergence_number_diff(3, count_i)) ) then
+            & .or. convergence_number_diff(1, count_i) > convergence_number_diff(3, count_i)) &
+            & .and. convergence_number_diff(2, count_i) /= convergence_number_diff(3, count_i) ) then
             
             if ( convergence_number_diff(1, count_i) == convergence_number_diff(2, count_i) ) then
                 update = (electrostatic_potential_diff(1, count_i) - electrostatic_potential_diff(3, count_i)) &
@@ -767,18 +771,18 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
                 
             end if
 
-            if ( abs(update) <= 1d1 ) then
+            if ( abs(update) <= 1d1 .and. update == update) then
                 electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update
             
-            else if ( abs(update) > 1d1 .and. sqrt(convergence_number_diff(1, count_i)) <= 2d1 ) then
+            else if ( abs(update) > 1d1 .and. sqrt(convergence_number_diff(1, count_i)) <= 2d1 .and. update == update ) then
                 electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) &
                     & * sqrt(convergence_number_diff(1, count_i))
 
-            else if ( abs(update) > 1d1 .and. sqrt(convergence_number_diff(1, count_i)) > 2d1 ) then
+            else if ( abs(update) > 1d1 .and. sqrt(convergence_number_diff(1, count_i)) > 2d1 .and. update == update ) then
                 electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i) - update / abs(update) * 2d1
                 
             end if
-            
+
         end if
 
     end do  !count_i
@@ -829,7 +833,8 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
 
             if ( sorting_potential_3(count_i) > electrostatic_potential(initial_fix_grid) ) then
                 sorting_potential_3(count_i) = 2d0 * electrostatic_potential(initial_fix_grid) &
-                    & - sorting_potential_3(count_i) 
+                    & - sorting_potential_3(count_i)
+                print *, count_i, sorting_potential_3(count_i)
             end if
             
         end do  !count_i
@@ -873,6 +878,21 @@ subroutine Newton_method_for_electrostatic_potential(electrostatic_potential_dif
             electrostatic_potential(count_i) = sorting_potential_2(count_i - initial_min_grid_2 + 1)
 
         end if
+
+    end do  !count_i
+    !$omp end do
+    !$omp end parallel
+
+    !$omp parallel
+    !$omp do
+    do count_i = 2, (real_grid_number - 1)/2
+        
+        if ( electrostatic_potential(count_i) /= electrostatic_potential(count_i) ) then
+            electrostatic_potential(count_i) = electrostatic_potential_diff(1, count_i)
+            print *, count_i
+        end if 
+
+        electrostatic_potential(count_i) = electrostatic_potential(real_grid_number + 1 - count_i)
 
     end do  !count_i
     !$omp end do
@@ -961,16 +981,34 @@ subroutine Newton_method_for_boundary_number_density(boundary_number_density_dif
             if ( convergence_number_diff(1, check_i) > convergence_number_diff(2, check_i) &
             & .or. convergence_number_diff(1, check_i) > convergence_number_diff(3, check_i) ) then
 
-                update = ((boundary_number_density_diff(1, check_s) - boundary_number_density_diff(3, check_s)) &
-                    & / (convergence_number_diff(1, check_i) - convergence_number_diff(3, check_i)) &
-                    & + (boundary_number_density_diff(2, check_s) - boundary_number_density_diff(1, check_s)) &
-                    & / (convergence_number_diff(2, check_i) - convergence_number_diff(1, check_i))) / 2d0 &
-                    & * convergence_number_diff(1, check_i)
+                if ( convergence_number_diff(1, check_i) == convergence_number_diff(2, check_i) ) then
+                    update = (boundary_number_density_diff(1, check_s) - boundary_number_density_diff(3, check_s)) &
+                        & / (convergence_number_diff(1, check_i) - convergence_number_diff(3, check_i)) &
+                        & * convergence_number_diff(1, check_i)
 
-                boundary_number_density(check_s) = boundary_number_density_diff(1, check_s) - update
+                else if ( convergence_number_diff(1, check_i) == convergence_number_diff(3, check_i) ) then
+                    update = (boundary_number_density_diff(2, check_s) - boundary_number_density_diff(1, check_s)) &
+                        & / (convergence_number_diff(2, check_i) - convergence_number_diff(1, check_i)) &
+                        & * convergence_number_diff(1, check_i)
+                
+                else
+                    update = ((boundary_number_density_diff(1, check_s) - boundary_number_density_diff(3, check_s)) &
+                        & / (convergence_number_diff(1, check_i) - convergence_number_diff(3, check_i)) &
+                        & + (boundary_number_density_diff(2, check_s) - boundary_number_density_diff(1, check_s)) &
+                        & / (convergence_number_diff(2, check_i) - convergence_number_diff(1, check_i))) / 2d0 &
+                        & * convergence_number_diff(1, check_i)
+                    
+                end if
+
+                if ( abs(update) < boundary_number_density_diff(1, check_s) * 1d-1 ) then
+                    boundary_number_density(check_s) = boundary_number_density_diff(1, check_s) - update
+                else if ( update == update ) then
+                    boundary_number_density(check_s) = boundary_number_density_diff(1, check_s) &
+                        & - update / abs(update) * boundary_number_density_diff(1, check_s) * 1d-1
+                end if
 
                 if ( boundary_number_density(check_s) < 0d0 ) then
-                    print *, "boundary_number_density < 0d0"
+                    print *, "boundary_number_density < 0d0", boundary_number_density_diff(1, check_s), update
                     stop
                 end if
                 

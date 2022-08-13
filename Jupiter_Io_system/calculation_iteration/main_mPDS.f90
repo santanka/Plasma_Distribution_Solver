@@ -81,7 +81,7 @@ program main
     read(30, *)
     do count_s = 1, boundary_series_number
 
-        read(30, *) dummy, boundary_number_density(count_s), boundary_temperature_perp(count_s), &
+        read(30, *) dummy, initial_boundary_number_density(count_s), boundary_temperature_perp(count_s), &
             & boundary_temperature_para(count_s), charge_number(count_s), particle_mass(count_s), injection_grid_number(count_s)
     
     end do  !count_s
@@ -90,6 +90,7 @@ program main
     charge_number = charge_number * elementary_charge
     boundary_temperature_perp = boundary_temperature_perp * elementary_charge
     boundary_temperature_para = boundary_temperature_para * elementary_charge
+    boundary_number_density = initial_boundary_number_density
 
 
     !------------------------
@@ -186,7 +187,8 @@ program main
             close(50)
         end if
 
-        if ( convergence_number_sum_min > convergence_number_sum ) then
+        if ( convergence_number_sum_min > convergence_number_sum &
+            & .and. (convergence_number_sum_min - convergence_number_sum) > convergence_number_sum_min * 1d-3) then
             convergence_number_sum_min = convergence_number_sum
             count_iteration_timer = count_iteration
         end if
@@ -216,6 +218,17 @@ program main
 
         call Newton_method_for_boundary_number_density(boundary_number_density_diff, convergence_number_diff, &
             & injection_grid_number, boundary_number_density)
+
+!        do count_s = 1, boundary_series_number
+!            
+!            if ( number_density_diff(1, 2, real_grid_number) < number_density_diff(1, 9, real_grid_number) * 1d1 &
+!                & .or. number_density_diff(1, 4, 1) > number_density_diff(1, 9, 1) * 1d1 ) then
+!                print *, "finish(error: boundary number density)", count_s, boundary_number_density(count_s), &
+!                    & initial_boundary_number_density(count_s)
+!                stop
+!            end if
+!
+!        end do  !count_s
 
 
         !------

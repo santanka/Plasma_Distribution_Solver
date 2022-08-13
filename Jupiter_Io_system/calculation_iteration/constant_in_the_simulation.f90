@@ -10,6 +10,13 @@ module constant_in_the_simulation
     integer, parameter :: real_grid_number = 233    !for real space
     integer, parameter :: adiabatic_invariant_grid_number = 150    !for adiabatic invariant
 
+    
+    !------------------------
+    ! integral velocity limit
+    !------------------------
+
+    double precision, parameter :: alpha = 1d-1
+
 
     !-------------------
     ! planet's constants

@@ -43,6 +43,7 @@ module main_variables
     double precision, dimension(real_grid_number) :: Alfven_speed, Alfven_speed_per_lightspeed
     double precision, dimension(real_grid_number) :: electron_inertial_length, ion_inertial_length
     double precision, dimension(real_grid_number) :: ion_Larmor_radius, ion_acoustic_radius, electron_Larmor_radius
+    double precision, dimension(real_grid_number) :: current_density
 
 
     !--------
